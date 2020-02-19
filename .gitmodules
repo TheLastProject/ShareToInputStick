@@ -1,0 +1,6 @@
+[submodule "InputStickAPI-Android"]
+	path = InputStickAPI-Android
+	url = https://github.com/inputstick/InputStickAPI-Android
+[submodule "app/InputStickAPI-Android"]
+	path = app/InputStickAPI-Android
+	url = https://github.com/inputstick/InputStickAPI-Android
