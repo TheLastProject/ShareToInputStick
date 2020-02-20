@@ -3,6 +3,7 @@ package me.hackerchick.sharetoinputstick
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.widget.Toast
 import com.inputstick.api.broadcast.InputStickBroadcast
 
 class MainActivity : AppCompatActivity() {
@@ -22,6 +23,8 @@ class MainActivity : AppCompatActivity() {
 
         sendText?.let {
             InputStickBroadcast.type(applicationContext, sendText, "en-US")
+            Toast.makeText(applicationContext, "Sending text…", Toast.LENGTH_SHORT).show()
+            finish()
         }
     }
 }
