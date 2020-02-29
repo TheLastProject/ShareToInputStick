@@ -1,1 +1,0 @@
-Add support to use the app without InputStickUtility if the InputStick is not password protected

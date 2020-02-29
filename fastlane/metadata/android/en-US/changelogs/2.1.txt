@@ -1,0 +1,1 @@
+Allow setting the connection password for an InputStick when opening the app normally
