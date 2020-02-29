@@ -18,6 +18,8 @@ import android.widget.EditText
 import com.inputstick.api.*
 import com.inputstick.api.basic.InputStickHID
 import com.inputstick.api.basic.InputStickKeyboard
+import com.inputstick.api.broadcast.InputStickBroadcast
+
 
 class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var listView: ListView? = null
@@ -70,7 +72,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     .show()
             } else {
                 // Send mode
-                sendMessageUsingBluetooth(mDeviceList[position])
+                if (position == 0) {
+                    sendMessageUsingInputStickUtility()
+                } else {
+                    // -1 because the first option in the list is "Use InputStickUtility" and not a device
+                    sendMessageUsingBluetooth(mDeviceList[position - 1])
+                }
             }
         }
 
@@ -101,6 +108,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         Toast.makeText(this, device.address, Toast.LENGTH_SHORT).show()
 
         InputStickHID.connect(application, device.address, Util.getPasswordBytes(getDevicePassword(this, device)), true)
+    }
+
+    private fun sendMessageUsingInputStickUtility() {
+        InputStickBroadcast.type(applicationContext, textToSend, "en-US")
+        Toast.makeText(applicationContext, "Sent text to InputStickUtility…", Toast.LENGTH_SHORT).show()
+        finish()
     }
 
     override fun onDestroy() {
