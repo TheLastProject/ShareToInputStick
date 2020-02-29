@@ -13,11 +13,11 @@ import android.widget.ListView
 import androidx.core.app.ActivityCompat
 import android.content.Intent
 import android.app.Activity
+import android.app.AlertDialog
+import android.widget.EditText
 import com.inputstick.api.*
 import com.inputstick.api.basic.InputStickHID
 import com.inputstick.api.basic.InputStickKeyboard
-import com.inputstick.api.broadcast.InputStickBroadcast
-
 
 class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var listView: ListView? = null
@@ -41,8 +41,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
 
         if (textToSend.isEmpty()) {
-            Toast.makeText(this, "No configuration settings supported yet. Please use Android's Share functionality.", Toast.LENGTH_LONG).show()
-            finish()
+            title = "Edit InputSticks"
         }
 
         InputStickHID.addStateListener(this)
@@ -50,11 +49,28 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         // Register list
         listView = findViewById(R.id.listView)
         listView?.setOnItemClickListener { _, _, position, _ ->
-            if (position == 0) {
-                sendMessageUsingInputStickUtility()
+            if (textToSend.isEmpty()) {
+                // Configuration mode
+                val editText = EditText(this)
+                editText.setText(getDevicePassword(this, mDeviceList[position]))
+
+                AlertDialog.Builder(this)
+                    .setTitle("Change InputStick password")
+                    .setMessage(String.format("Change password for device %s with mac address %s", mDeviceList[position].name, mDeviceList[position].address))
+                    .setView(editText)
+                    .setPositiveButton("Save") { _: DialogInterface, _: Int ->
+                        var devicePassword : String? = null
+                        if (editText.text.toString().isNotEmpty()) {
+                            devicePassword = editText.text.toString()
+                        }
+                        setDevicePassword(this, mDeviceList[position], devicePassword)
+                        updateDeviceList(this)
+                    }
+                    .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
+                    .show()
             } else {
-                // -1 because the first option in the list is "Use InputStickUtility" and not a device
-                sendMessageUsingBluetooth(mDeviceList[position - 1])
+                // Send mode
+                sendMessageUsingBluetooth(mDeviceList[position])
             }
         }
 
@@ -64,16 +80,27 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH)
     }
 
+    private fun getDevicePassword(activity: Activity, bluetoothDevice: BluetoothDevice) : String? {
+        val deviceName = String.format("device_%s", bluetoothDevice.address)
+
+        val sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
+        return sharedPref.getString(deviceName, null)
+    }
+
+    private fun setDevicePassword(activity: Activity, bluetoothDevice: BluetoothDevice, devicePassword: String?) {
+        val deviceName = String.format("device_%s", bluetoothDevice.address)
+
+        val sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
+        with (sharedPref.edit()) {
+            putString(deviceName, devicePassword)
+            commit()
+        }
+    }
+
     private fun sendMessageUsingBluetooth(device: BluetoothDevice) {
         Toast.makeText(this, device.address, Toast.LENGTH_SHORT).show()
 
-        InputStickHID.connect(application, device.address, null, true)
-    }
-
-    private fun sendMessageUsingInputStickUtility() {
-        InputStickBroadcast.type(applicationContext, textToSend, "en-US")
-        Toast.makeText(applicationContext, "Sent text to InputStickUtility…", Toast.LENGTH_SHORT).show()
-        finish()
+        InputStickHID.connect(application, device.address, Util.getPasswordBytes(getDevicePassword(this, device)), true)
     }
 
     override fun onDestroy() {
@@ -145,8 +172,17 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
     private fun updateDeviceList(context: Context) {
         val deviceList = ArrayList<String>()
-        deviceList.add("Use InputStickUtility (Must be installed)")
-        deviceList.addAll(mDeviceList.map { it.name + "\n" + it.address })
+        if (textToSend.isNotEmpty()) {
+            deviceList.add("Use InputStickUtility (Must be installed)")
+        }
+        deviceList.addAll(mDeviceList.map {
+            var passwordSetString = ""
+            if (getDevicePassword(this, it) != null) {
+                passwordSetString = "\nPassword set"
+            }
+
+            it.name + "\n" + it.address + passwordSetString
+        })
 
         listView?.adapter = ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, deviceList)
     }

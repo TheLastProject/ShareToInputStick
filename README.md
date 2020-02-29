@@ -2,8 +2,6 @@
 
 Adds an entry to Android's Share menu to directly share text to an [InputStick](http://inputstick.com/).
 
-Currently needs [InputStickUtility](http://inputstick.com/inputstickutility-android/) to be installed if your InputStick is password protected.
-
 ## How to build
 
 First, clone everything:
