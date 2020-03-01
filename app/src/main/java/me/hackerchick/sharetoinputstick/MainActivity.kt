@@ -24,6 +24,7 @@ import com.inputstick.api.broadcast.InputStickBroadcast
 class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var listView: ListView? = null
     private val mDeviceList = ArrayList<BluetoothDevice>()
+    private var connectingDevice: BluetoothDevice? = null
 
     private var inputStickConnectionManager: BTConnectionManager? = null
 
@@ -53,30 +54,14 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         listView?.setOnItemClickListener { _, _, position, _ ->
             if (textToSend.isEmpty()) {
                 // Configuration mode
-                val editText = EditText(this)
-                editText.setText(getDevicePassword(this, mDeviceList[position]))
-
-                AlertDialog.Builder(this)
-                    .setTitle("Change InputStick password")
-                    .setMessage(String.format("Change password for device %s with mac address %s", mDeviceList[position].name, mDeviceList[position].address))
-                    .setView(editText)
-                    .setPositiveButton("Save") { _: DialogInterface, _: Int ->
-                        var devicePassword : String? = null
-                        if (editText.text.toString().isNotEmpty()) {
-                            devicePassword = editText.text.toString()
-                        }
-                        setDevicePassword(this, mDeviceList[position], devicePassword)
-                        updateDeviceList(this)
-                    }
-                    .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
-                    .show()
+                connectToInputStickUsingBluetooth(mDeviceList[position])
             } else {
                 // Send mode
                 if (position == 0) {
                     sendMessageUsingInputStickUtility()
                 } else {
                     // -1 because the first option in the list is "Use InputStickUtility" and not a device
-                    sendMessageUsingBluetooth(mDeviceList[position - 1])
+                    connectToInputStickUsingBluetooth(mDeviceList[position - 1])
                 }
             }
         }
@@ -95,6 +80,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun setDevicePassword(activity: Activity, bluetoothDevice: BluetoothDevice, devicePassword: String?) {
+        // Locally store the password needed to connect
         val deviceName = String.format("device_%s", bluetoothDevice.address)
 
         val sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
@@ -104,10 +90,21 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
     }
 
-    private fun sendMessageUsingBluetooth(device: BluetoothDevice) {
-        Toast.makeText(this, device.address, Toast.LENGTH_SHORT).show()
+    private fun setDevicePasswordOnDevice(devicePassword: String?) {
+        // Change the connection password on the InputStick itself
 
-        InputStickHID.connect(application, device.address, Util.getPasswordBytes(getDevicePassword(this, device)), true)
+        val btConnectionManager = InputStickHID.getConnectionManager() as BTConnectionManager
+        btConnectionManager.changeKey(Util.getPasswordBytes(if (devicePassword.isNullOrEmpty()) "" else devicePassword))
+    }
+
+    private fun connectToInputStickUsingBluetooth(device: BluetoothDevice) {
+        connectingDevice = device
+
+        var connectionPassword: ByteArray? = null
+        if (getDevicePassword(this, device) != null) {
+            connectionPassword = Util.getPasswordBytes(getDevicePassword(this, device))
+        }
+        InputStickHID.connect(application, device.address, connectionPassword, true)
     }
 
     private fun sendMessageUsingInputStickUtility() {
@@ -179,6 +176,27 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
     }
 
+    private fun showIncorrectPasswordDialog(bluetoothDevice: BluetoothDevice) {
+        val editText = EditText(this)
+        editText.setText(getDevicePassword(this, bluetoothDevice))
+
+        AlertDialog.Builder(this)
+            .setTitle("Incorrect InputStick password")
+            .setMessage(String.format("Enter password for device %s with mac address %s", bluetoothDevice.name, bluetoothDevice.address))
+            .setView(editText)
+            .setPositiveButton("Save") { _: DialogInterface, _: Int ->
+                var devicePassword : String? = null
+                if (editText.text.toString().isNotEmpty()) {
+                    devicePassword = editText.text.toString()
+                }
+                setDevicePassword(this, bluetoothDevice, devicePassword)
+                updateDeviceList(this)
+                connectToInputStickUsingBluetooth(bluetoothDevice)
+            }
+            .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
+            .show()
+    }
+
     private fun showBluetoothDeniedToast() {
         Toast.makeText(this, "Can only show the Use InputStickUtility option without Bluetooth and location permission...", Toast.LENGTH_LONG).show()
     }
@@ -209,15 +227,37 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 Toast.makeText(this, "Connecting", Toast.LENGTH_LONG).show()
             }
             ConnectionManager.STATE_READY -> {
-                Toast.makeText(this, "Sent text over Bluetooth…", Toast.LENGTH_LONG).show()
-                InputStickKeyboard.type(textToSend, "en-US")
-                finish()
-            }
-            ConnectionManager.STATE_DISCONNECTED -> {
-                Toast.makeText(this, "Disconnected", Toast.LENGTH_LONG).show()
+                if (textToSend.isNotEmpty()) {
+                    // Send mode
+                    Toast.makeText(this, "Sent text over Bluetooth…", Toast.LENGTH_LONG).show()
+                    InputStickKeyboard.type(textToSend, "en-US")
+                    finish()
+                } else {
+                    // Configure mode
+                    // TODO: Allow changing the device's password here
+                    AlertDialog.Builder(this)
+                        .setTitle("Connection test successful")
+                        .setMessage(String.format("Successfully connected to device %s with mac address %s. Use Android's share menu to send text to your InputStick.", connectingDevice!!.name, connectingDevice!!.address))
+                        .setPositiveButton("OK") { _: DialogInterface, _: Int -> }
+                        .show()
+
+                    InputStickHID.disconnect()
+                }
             }
             ConnectionManager.STATE_FAILURE -> {
-                Toast.makeText(this, "Connection failed: " + InputStickError.getFullErrorMessage(InputStickHID.getErrorCode()), Toast.LENGTH_LONG).show()
+                when (InputStickHID.getErrorCode()) {
+                    InputStickError.ERROR_SECURITY,
+                    InputStickError.ERROR_SECURITY_CHALLENGE,
+                    InputStickError.ERROR_SECURITY_INVALID_KEY,
+                    InputStickError.ERROR_SECURITY_NOT_PROTECTED,
+                    InputStickError.ERROR_SECURITY_NOT_SUPPORTED,
+                    InputStickError.ERROR_SECURITY_NO_KEY -> {
+                        showIncorrectPasswordDialog(connectingDevice!!)
+                    }
+                    else -> {
+                        Toast.makeText(this, "Connection failed: " + InputStickError.getFullErrorMessage(InputStickHID.getErrorCode()), Toast.LENGTH_LONG).show()
+                    }
+                }
             }
             else -> {
                 Toast.makeText(this, String.format("Unknown state: %s", state.toString()), Toast.LENGTH_LONG).show()
