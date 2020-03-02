@@ -14,6 +14,8 @@ import androidx.core.app.ActivityCompat
 import android.content.Intent
 import android.app.Activity
 import android.app.AlertDialog
+import android.transition.Visibility
+import android.view.View
 import android.widget.EditText
 import com.inputstick.api.*
 import com.inputstick.api.basic.InputStickHID
@@ -33,6 +35,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
     private var textToSend: String = ""
 
+    private var fab: View? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -43,8 +47,10 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             }
         }
 
-        if (textToSend.isEmpty()) {
-            title = "Edit InputSticks"
+        fab = findViewById(R.id.fab)
+
+        fab?.setOnClickListener {
+            showNewMessageDialog()
         }
 
         InputStickHID.addStateListener(this)
@@ -70,6 +76,18 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
         startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH)
+
+        start()
+    }
+
+    private fun start() {
+        if (textToSend.isEmpty()) {
+            title = "Edit InputSticks"
+            fab?.visibility = View.VISIBLE
+        } else {
+            title = "Share To InputStick"
+            fab?.visibility = View.INVISIBLE
+        }
     }
 
     private fun getDevicePassword(activity: Activity, bluetoothDevice: BluetoothDevice) : String? {
@@ -199,6 +217,21 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 setDevicePassword(this, bluetoothDevice, devicePassword)
                 updateDeviceList(this)
                 connectToInputStickUsingBluetooth(bluetoothDevice)
+            }
+            .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
+            .show()
+    }
+
+    private fun showNewMessageDialog() {
+        val editText = EditText(this)
+
+        AlertDialog.Builder(this)
+            .setTitle("Send message")
+            .setMessage(String.format("Enter the text to send"))
+            .setView(editText)
+            .setPositiveButton("Send") { _: DialogInterface, _: Int ->
+                textToSend = editText.text.toString()
+                start()
             }
             .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
             .show()
