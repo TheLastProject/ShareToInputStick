@@ -168,7 +168,14 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     .getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
 
                 if (device != null) {
-                    mDeviceList.add(device)
+                    // Put on top of list if we know the password to this device
+                    // because that means we used the device before so the user
+                    // more likely cares about it
+                    if (getDevicePassword(this@MainActivity, device) != null) {
+                        mDeviceList.add(0, device)
+                    } else {
+                        mDeviceList.add(device)
+                    }
                 }
 
                 updateDeviceList(context)
