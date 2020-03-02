@@ -72,8 +72,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             }
         }
 
-        updateDeviceList(this)
-
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
         startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH)
 
@@ -88,6 +86,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             title = "Share To InputStick"
             fab?.visibility = View.INVISIBLE
         }
+
+        updateDeviceList(this)
     }
 
     private fun getDevicePassword(activity: Activity, bluetoothDevice: BluetoothDevice) : String? {
