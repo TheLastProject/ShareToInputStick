@@ -1,0 +1,2 @@
+Put known and password protected devices on top of device list
+Add button in main screen to manually send text to a device

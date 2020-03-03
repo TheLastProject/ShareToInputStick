@@ -1,1 +1,0 @@
-Automatically detect incorrect InputStick password
