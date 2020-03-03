@@ -14,8 +14,9 @@ import androidx.core.app.ActivityCompat
 import android.content.Intent
 import android.app.Activity
 import android.app.AlertDialog
-import android.transition.Visibility
+import android.text.InputType
 import android.view.View
+import android.view.WindowManager
 import android.widget.EditText
 import com.inputstick.api.*
 import com.inputstick.api.basic.InputStickHID
@@ -204,8 +205,9 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private fun showIncorrectPasswordDialog(bluetoothDevice: BluetoothDevice) {
         val editText = EditText(this)
         editText.setText(getDevicePassword(this, bluetoothDevice))
+        editText.inputType = InputType.TYPE_TEXT_VARIATION_PASSWORD
 
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Incorrect InputStick password")
             .setMessage(String.format("Enter password for device %s with mac address %s", bluetoothDevice.name, bluetoothDevice.address))
             .setView(editText)
@@ -219,13 +221,18 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 connectToInputStickUsingBluetooth(bluetoothDevice)
             }
             .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
-            .show()
+            .create()
+
+        dialog.show()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+        editText.requestFocus()
     }
 
     private fun showNewMessageDialog() {
         val editText = EditText(this)
+        editText.inputType = InputType.TYPE_CLASS_TEXT
 
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Send message")
             .setMessage(String.format("Enter the text to send"))
             .setView(editText)
@@ -234,7 +241,11 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 start()
             }
             .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
-            .show()
+            .create()
+
+        dialog.show()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
+        editText.requestFocus()
     }
 
     private fun showBluetoothDeniedToast() {
