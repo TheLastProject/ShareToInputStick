@@ -1,1 +1,0 @@
-Fix keyboard not showing up automatically in dialogs
