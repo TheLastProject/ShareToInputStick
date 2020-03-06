@@ -29,8 +29,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private val mDeviceList = ArrayList<BluetoothDevice>()
     private var connectingDevice: BluetoothDevice? = null
 
-    private var inputStickConnectionManager: BTConnectionManager? = null
-
     private var PERMISSION_REQUEST_BLUETOOTH = 1
     private var REQUEST_ENABLE_BLUETOOTH = 2
 
@@ -79,6 +77,16 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         start()
     }
 
+    override fun onPause() {
+        InputStickHID.removeStateListener(this)
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        InputStickHID.addStateListener(this)
+    }
+
     private fun start() {
         if (textToSend.isEmpty()) {
             title = "Edit InputSticks"
@@ -109,13 +117,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
     }
 
-    private fun setDevicePasswordOnDevice(devicePassword: String?) {
-        // Change the connection password on the InputStick itself
-
-        val btConnectionManager = InputStickHID.getConnectionManager() as BTConnectionManager
-        btConnectionManager.changeKey(Util.getPasswordBytes(if (devicePassword.isNullOrEmpty()) "" else devicePassword))
-    }
-
     private fun connectToInputStickUsingBluetooth(device: BluetoothDevice) {
         connectingDevice = device
 
@@ -140,7 +141,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         } catch (Exception: IllegalArgumentException) {
             // Not registered yet, that's fine
         }
-        inputStickConnectionManager?.disconnect()
+        InputStickHID.disconnect()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
