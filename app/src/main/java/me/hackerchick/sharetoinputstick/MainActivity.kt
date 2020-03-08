@@ -313,7 +313,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     // Send mode
                     sendToBluetoothDevice(connectingDevice!!, textToSend)
                     finish()
-                    finish()
                 } else {
                     // Configure mode
                     // TODO: Allow changing the device's password here
