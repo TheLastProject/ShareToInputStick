@@ -1,1 +1,0 @@
-Fix InputStick not being usable until replugged after sending text
