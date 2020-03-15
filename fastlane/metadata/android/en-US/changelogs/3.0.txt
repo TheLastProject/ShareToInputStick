@@ -1,2 +1,0 @@
-Split known and found devices
-Refactor a lot of the app's code
