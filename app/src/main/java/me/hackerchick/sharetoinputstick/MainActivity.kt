@@ -12,8 +12,7 @@ import android.content.Intent
 import android.app.Activity
 import android.app.AlertDialog
 import android.text.InputType
-import android.view.View
-import android.view.WindowManager
+import android.view.*
 import android.widget.*
 import androidx.room.Room
 import com.inputstick.api.*
@@ -71,6 +70,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         // Register lists
         mKnownDevicesListView = findViewById(R.id.knownDevicesListView)
+        registerForContextMenu(mKnownDevicesListView)
         mKnownDevicesListView?.setOnItemClickListener { _, _, position, _ ->
             connectToInputStickUsingBluetooth(mKnownDevicesList[position])
         }
@@ -94,6 +94,29 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     override fun onResume() {
         super.onResume()
         InputStickHID.addStateListener(this)
+    }
+
+    override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo)
+        val inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.inputstick_context_menu, menu)
+    }
+
+    override fun onContextItemSelected(item: MenuItem): Boolean {
+        val info = item.menuInfo as AdapterView.AdapterContextMenuInfo
+        return when (item.itemId) {
+            R.id.forget -> {
+                val device = mKnownDevicesList[info.position]
+                device.password = null
+                device.last_used = 0
+                inputStickDao!!.update(device)
+
+                updateKnownDeviceList(this)
+                updateBluetoothDeviceList(this)
+                true
+            }
+            else -> super.onContextItemSelected(item)
+        }
     }
 
     private fun start() {
@@ -140,10 +163,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         inputStickDao!!.update(inputStick)
 
         updateKnownDeviceList(this)
-
-        if (mBluetoothDeviceList.remove(inputStick)) {
-            updateBluetoothDeviceList(this)
-        }
     }
 
     private fun connectToInputStickUsingBluetooth(device: InputStick) {
@@ -218,9 +237,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
                 if (device != null) {
                     val inputStick = getInputStickFromDB(device)
-                    if (!mKnownDevicesList.contains(inputStick)) {
-                        mBluetoothDeviceList.add(inputStick)
-                    }
+                    mBluetoothDeviceList.add(inputStick)
                 }
 
                 updateBluetoothDeviceList(context)
