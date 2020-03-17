@@ -328,6 +328,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                         .show()
 
                     InputStickHID.disconnect()
+
+                    // Consider device used
+                    connectingDevice!!.last_used = System.currentTimeMillis()
+                    inputStickDao?.update(connectingDevice!!)
+
+                    updateBluetoothDeviceList(this)
                 }
             }
             ConnectionManager.STATE_FAILURE -> {
