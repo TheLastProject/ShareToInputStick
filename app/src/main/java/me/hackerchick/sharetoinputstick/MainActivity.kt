@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var mKnownDevicesListView: ListView? = null
     private var mBluetoothDevicesListView: ListView? = null
     private val mKnownDevicesList = ArrayList<InputStick>()
-    private val mBluetoothDeviceList = ArrayList<InputStick>()
+    private val mBluetoothDevicesList = ArrayList<InputStick>()
 
     private var connectingDevice: InputStick? = null
 
@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         mBluetoothDevicesListView = findViewById(R.id.bluetoothDevicesListView)
         mBluetoothDevicesListView?.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(mBluetoothDeviceList[position])
+            connectToInputStickUsingBluetooth(mBluetoothDevicesList[position])
         }
 
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -111,7 +111,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 device.last_used = 0
                 inputStickDao!!.update(device)
 
-                updateKnownDeviceList(this)
                 updateBluetoothDeviceList(this)
                 true
             }
@@ -130,7 +129,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             useInputUtilityButton?.visibility = View.VISIBLE
         }
 
-        updateKnownDeviceList(this)
         updateBluetoothDeviceList(this)
     }
 
@@ -237,7 +235,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
                 if (device != null) {
                     val inputStick = getInputStickFromDB(device)
-                    mBluetoothDeviceList.add(inputStick)
+                    mBluetoothDevicesList.add(inputStick)
                 }
 
                 updateBluetoothDeviceList(context)
@@ -295,26 +293,16 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun updateBluetoothDeviceList(context: Context) {
-        val deviceList = ArrayList<String>()
+        bluetoothDevicesListView?.adapter = InputStickAdapter(context, mBluetoothDevicesList)
 
-        deviceList.addAll(mBluetoothDeviceList.map {
-            it.name + "\n" + it.mac
-        })
-
-        bluetoothDevicesListView?.adapter = ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, deviceList)
+        updateKnownDeviceList(context)
     }
 
     private fun updateKnownDeviceList(context: Context) {
-        val deviceList = ArrayList<String>()
-
         mKnownDevicesList.clear()
-        mKnownDevicesList.addAll(inputStickDao!!.getAllByLastUsed())
+        mKnownDevicesList.addAll(inputStickDao?.getAllByLastUsed() as ArrayList)
 
-        deviceList.addAll(mKnownDevicesList.map {
-            it.name + "\n" + it.mac
-        })
-
-        knownDevicesListView?.adapter = ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, deviceList)
+        knownDevicesListView?.adapter = InputStickAdapter(context, mKnownDevicesList, mBluetoothDevicesList)
     }
 
     override fun onStateChanged(state: Int) {
