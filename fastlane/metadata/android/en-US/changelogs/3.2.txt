@@ -1,0 +1,1 @@
+Show Bluetooth icon next to known device when found in scan (so it is obvious when the device is available)
