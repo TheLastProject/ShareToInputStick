@@ -1,26 +1,32 @@
 package me.hackerchick.sharetoinputstick
 
 import android.Manifest
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
+import android.app.Activity
+import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.*
 import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
-import android.content.Intent
-import android.app.Activity
-import android.app.AlertDialog
+import android.os.Bundle
 import android.text.InputType
 import android.view.*
-import android.widget.*
+import android.widget.AdapterView
+import android.widget.EditText
+import android.widget.ListView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.room.Room
-import com.inputstick.api.*
+import com.inputstick.api.ConnectionManager
+import com.inputstick.api.InputStickError
+import com.inputstick.api.InputStickStateListener
+import com.inputstick.api.Util
 import com.inputstick.api.basic.InputStickHID
 import com.inputstick.api.basic.InputStickKeyboard
 import com.inputstick.api.broadcast.InputStickBroadcast
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlin.collections.ArrayList
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 
 
 class MainActivity : AppCompatActivity(), InputStickStateListener {
@@ -179,6 +185,14 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         finish()
     }
 
+    private fun closeAfterSendingCompletes() {
+        // Wait until there's no text left to send before disconnecting
+        val executor = ScheduledThreadPoolExecutor(1)
+        executor.scheduleWithFixedDelay({
+            if (InputStickHID.isKeyboardLocalBufferEmpty()) finish()
+        }, 0L, 10, TimeUnit.MILLISECONDS)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
 
@@ -187,6 +201,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         } catch (Exception: IllegalArgumentException) {
             // Not registered yet, that's fine
         }
+
         InputStickHID.disconnect()
     }
 
@@ -317,7 +332,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 if (textToSend.isNotEmpty()) {
                     // Send mode
                     sendToBluetoothDevice(connectingDevice!!, textToSend)
-                    finish()
+                    closeAfterSendingCompletes()
                 } else {
                     // Configure mode
                     // TODO: Allow changing the device's password here
@@ -362,6 +377,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         inputStickDao!!.update(inputStick)
 
         Toast.makeText(this, "Sent text over Bluetooth…", Toast.LENGTH_LONG).show()
+
         InputStickKeyboard.type(textToSend, "en-US")
     }
 }

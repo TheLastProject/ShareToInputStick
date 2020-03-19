@@ -32,8 +32,8 @@ class InputStickAdapter : ArrayAdapter<InputStick> {
         }
 
         val tvName = view?.findViewById(R.id.name) as TextView
-        val tvMac = view?.findViewById(R.id.mac) as TextView
-        val iconBluetooth = view?.findViewById(R.id.bluetoothIcon) as ImageView
+        val tvMac = view.findViewById(R.id.mac) as TextView
+        val iconBluetooth = view.findViewById(R.id.bluetoothIcon) as ImageView
 
         tvName.text = inputStick?.name
         tvMac.text = inputStick?.mac
