@@ -32,20 +32,26 @@ import java.util.concurrent.TimeUnit
 class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var inputStickDao: InputStickDao? = null
 
+    private var mBluetoothAdapter: BluetoothAdapter? = null
+    private var mBluetoothAdapterAutoRescan: Boolean = true
+
     private var mKnownDevicesListView: ListView? = null
     private var mBluetoothDevicesListView: ListView? = null
     private val mKnownDevicesList = ArrayList<InputStick>()
     private val mBluetoothDevicesList = ArrayList<InputStick>()
 
-    private var connectingDevice: InputStick? = null
+    private var mWaitingDevice: InputStick? = null
+    private var mConnectingDevice: InputStick? = null
+
+    private var mBusyDialog: AlertDialog? = null
 
     private var PERMISSION_REQUEST_BLUETOOTH = 1
     private var REQUEST_ENABLE_BLUETOOTH = 2
 
-    private var textToSend: String = ""
+    private var mTextToSend: String = ""
 
-    private var useInputUtilityButton: View? = null
-    private var fab: View? = null
+    private var mUseInputUtilityButton: View? = null
+    private var mFab: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,17 +64,17 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         if (intent?.action == Intent.ACTION_SEND) {
             if (intent.getStringExtra(Intent.EXTRA_TEXT) != null) {
-                textToSend = intent.getStringExtra(Intent.EXTRA_TEXT)!!
+                mTextToSend = intent.getStringExtra(Intent.EXTRA_TEXT)!!
             }
         }
 
-        useInputUtilityButton = findViewById(R.id.useInputStickUtilityButton)
-        useInputUtilityButton?.setOnClickListener {
+        mUseInputUtilityButton = findViewById(R.id.useInputStickUtilityButton)
+        mUseInputUtilityButton?.setOnClickListener {
             sendMessageUsingInputStickUtility()
         }
 
-        fab = findViewById(R.id.fab)
-        fab?.setOnClickListener {
+        mFab = findViewById(R.id.fab)
+        mFab?.setOnClickListener {
             showNewMessageDialog()
         }
 
@@ -93,12 +99,16 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     override fun onPause() {
+        mBluetoothAdapterAutoRescan = false
+        mBluetoothAdapter?.cancelDiscovery()
         InputStickHID.removeStateListener(this)
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
+        mBluetoothAdapterAutoRescan = false
+        mBluetoothAdapter?.startDiscovery()
         InputStickHID.addStateListener(this)
     }
 
@@ -125,14 +135,14 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun start() {
-        if (textToSend.isEmpty()) {
+        if (mTextToSend.isEmpty()) {
             title = "Edit InputSticks"
-            fab?.visibility = View.VISIBLE
-            useInputUtilityButton?.visibility = View.GONE
+            mFab?.visibility = View.VISIBLE
+            mUseInputUtilityButton?.visibility = View.GONE
         } else {
             title = "Share To InputStick"
-            fab?.visibility = View.INVISIBLE
-            useInputUtilityButton?.visibility = View.VISIBLE
+            mFab?.visibility = View.INVISIBLE
+            mUseInputUtilityButton?.visibility = View.VISIBLE
         }
 
         updateBluetoothDeviceList(this)
@@ -170,7 +180,13 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun connectToInputStickUsingBluetooth(device: InputStick) {
-        connectingDevice = device
+        if (!mBluetoothDevicesList.contains(device)) {
+            updateBusyDialog(this, "Waiting for device to show up in Bluetooth scan...")
+            mWaitingDevice = device
+            return
+        }
+
+        mConnectingDevice = device
 
         var connectionPassword: ByteArray? = null
         if (getDevicePassword(device) != null) {
@@ -180,7 +196,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun sendMessageUsingInputStickUtility() {
-        InputStickBroadcast.type(applicationContext, textToSend, "en-US")
+        InputStickBroadcast.type(applicationContext, mTextToSend, "en-US")
         Toast.makeText(applicationContext, "Sent text to InputStickUtility…", Toast.LENGTH_SHORT).show()
         finish()
     }
@@ -225,15 +241,14 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                     // Start watching Bluetooth devices
                     val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
+                    filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
                     registerReceiver(mReceiver, filter)
 
                     // Create Bluetooth adapter
-                    val mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+                    mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
                     // Start finding devices
-                    mBluetoothAdapter.startDiscovery()
-
-                    Toast.makeText(this, "Scanning...", Toast.LENGTH_SHORT).show()
+                    mBluetoothAdapter!!.startDiscovery()
                 } else {
                     showBluetoothDeniedToast()
                 }
@@ -250,10 +265,25 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
                 if (device != null) {
                     val inputStick = getInputStickFromDB(device)
-                    mBluetoothDevicesList.add(inputStick)
+                    if (!mBluetoothDevicesList.contains(inputStick)) {
+                        mBluetoothDevicesList.add(inputStick)
+                    }
+
+                    if (inputStick == mWaitingDevice) {
+                        // We were waiting for this device, connect now
+                        mWaitingDevice = null
+                        connectToInputStickUsingBluetooth(inputStick)
+                    }
                 }
 
                 updateBluetoothDeviceList(context)
+            }
+            else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED == intent.action) {
+                if (mBluetoothAdapterAutoRescan) {
+                    mBluetoothAdapter!!.startDiscovery()
+
+                    Toast.makeText(context, "Scanning...", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -292,7 +322,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             .setMessage(String.format("Enter the text to send"))
             .setView(editText)
             .setPositiveButton("Send") { _: DialogInterface, _: Int ->
-                textToSend = editText.text.toString()
+                mTextToSend = editText.text.toString()
                 start()
             }
             .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
@@ -323,35 +353,40 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     override fun onStateChanged(state: Int) {
         when (state) {
             ConnectionManager.STATE_CONNECTED -> {
-                Toast.makeText(this, "Connected", Toast.LENGTH_LONG).show()
+                updateBusyDialog(this, "Preparing...")
             }
             ConnectionManager.STATE_CONNECTING -> {
-                Toast.makeText(this, "Connecting", Toast.LENGTH_LONG).show()
+                updateBusyDialog(this, "Connecting...")
             }
             ConnectionManager.STATE_READY -> {
-                if (textToSend.isNotEmpty()) {
+                if (mTextToSend.isNotEmpty()) {
                     // Send mode
-                    sendToBluetoothDevice(connectingDevice!!, textToSend)
+                    updateBusyDialog(this, "Sending data...")
+                    sendToBluetoothDevice(mConnectingDevice!!, mTextToSend)
                     closeAfterSendingCompletes()
                 } else {
                     // Configure mode
                     // TODO: Allow changing the device's password here
+                    updateBusyDialog(this, null)
+
                     AlertDialog.Builder(this)
                         .setTitle("Connection test successful")
-                        .setMessage(String.format("Successfully connected to device %s with mac address %s. Use Android's share menu to send text to your InputStick.", connectingDevice!!.name, connectingDevice!!.mac))
+                        .setMessage(String.format("Successfully connected to device %s with mac address %s. Use Android's share menu to send text to your InputStick.", mConnectingDevice!!.name, mConnectingDevice!!.mac))
                         .setPositiveButton("OK") { _: DialogInterface, _: Int -> }
                         .show()
 
                     InputStickHID.disconnect()
 
                     // Consider device used
-                    connectingDevice!!.last_used = System.currentTimeMillis()
-                    inputStickDao?.update(connectingDevice!!)
+                    mConnectingDevice!!.last_used = System.currentTimeMillis()
+                    inputStickDao?.update(mConnectingDevice!!)
 
                     updateBluetoothDeviceList(this)
                 }
             }
             ConnectionManager.STATE_FAILURE -> {
+                updateBusyDialog(this, null)
+
                 when (InputStickHID.getErrorCode()) {
                     InputStickError.ERROR_SECURITY,
                     InputStickError.ERROR_SECURITY_CHALLENGE,
@@ -359,15 +394,16 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     InputStickError.ERROR_SECURITY_NOT_PROTECTED,
                     InputStickError.ERROR_SECURITY_NOT_SUPPORTED,
                     InputStickError.ERROR_SECURITY_NO_KEY -> {
-                        showIncorrectPasswordDialog(connectingDevice!!)
+                        showIncorrectPasswordDialog(mConnectingDevice!!)
                     }
                     else -> {
-                        Toast.makeText(this, "Connection failed: " + InputStickError.getFullErrorMessage(InputStickHID.getErrorCode()), Toast.LENGTH_LONG).show()
+                        AlertDialog.Builder(this)
+                            .setTitle("Failed to connect")
+                            .setMessage(InputStickError.getFullErrorMessage(InputStickHID.getErrorCode()))
+                            .setPositiveButton("OK") { _: DialogInterface, _: Int -> }
+                            .show()
                     }
                 }
-            }
-            else -> {
-                Toast.makeText(this, String.format("Unknown state: %s", state.toString()), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -376,8 +412,23 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         inputStick.last_used = System.currentTimeMillis()
         inputStickDao!!.update(inputStick)
 
-        Toast.makeText(this, "Sent text over Bluetooth…", Toast.LENGTH_LONG).show()
-
         InputStickKeyboard.type(textToSend, "en-US")
+    }
+
+    private fun updateBusyDialog(context: Context, message: String?) {
+        if (mBusyDialog == null) {
+            mBusyDialog = AlertDialog.Builder(context)
+                .setNegativeButton("Cancel") { _: DialogInterface, _: Int ->
+                    InputStickHID.disconnect()
+                }
+                .create()
+        }
+
+        if (message != null) {
+            mBusyDialog!!.setMessage(message)
+            mBusyDialog!!.show()
+        } else {
+            mBusyDialog!!.hide()
+        }
     }
 }
