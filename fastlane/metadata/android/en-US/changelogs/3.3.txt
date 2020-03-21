@@ -1,0 +1,3 @@
+More clear dialogs communicating connection info
+Wait for known device to appear in Bluetooth scan before attempting to connect
+Scan for Bluetooth devices constantly while app is open
