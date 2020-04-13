@@ -53,9 +53,13 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var mUseInputUtilityButton: View? = null
     private var mFab: View? = null
 
+    private var mInputSpeed: Int = InputStickKeyboard.TYPING_SPEED_NORMAL
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        setSupportActionBar(findViewById(R.id.appbar))
 
         inputStickDao = Room.databaseBuilder(
             applicationContext,
@@ -110,6 +114,38 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         mBluetoothAdapterAutoRescan = false
         mBluetoothAdapter?.startDiscovery()
         InputStickHID.addStateListener(this)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        var inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+        R.id.option_typing_speed_100 -> {
+            mInputSpeed = InputStickKeyboard.TYPING_SPEED_NORMAL
+            item.isChecked = true
+            true
+        }
+        R.id.option_typing_speed_50 -> {
+            mInputSpeed = InputStickKeyboard.TYPING_SPEED_050X
+            item.isChecked = true
+            true
+        }
+        R.id.option_typing_speed_33 -> {
+            mInputSpeed = InputStickKeyboard.TYPING_SPEED_033X
+            item.isChecked = true
+            true
+        }
+        R.id.option_typing_speed_25 -> {
+            mInputSpeed = InputStickKeyboard.TYPING_SPEED_025X
+            item.isChecked = true
+            true
+        }
+        else -> {
+            super.onOptionsItemSelected(item)
+        }
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo) {
@@ -412,7 +448,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         inputStick.last_used = System.currentTimeMillis()
         inputStickDao!!.update(inputStick)
 
-        InputStickKeyboard.type(textToSend, "en-US")
+        InputStickKeyboard.type(textToSend, "en-US", mInputSpeed)
     }
 
     private fun updateBusyDialog(context: Context, message: String?) {
