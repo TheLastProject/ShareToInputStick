@@ -25,7 +25,7 @@
         app:layout_constraintTop_toBottomOf="@id/appbar"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        android:text="Use InputStickUtility (must be installed)"
+        android:text="@string/use_inputstickutility_must_be_installed"
         android:visibility="gone" />
 
     <TextView
@@ -36,7 +36,7 @@
         app:layout_constraintTop_toBottomOf="@id/useInputStickUtilityButton"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        android:text="Known Devices"/>
+        android:text="@string/known_devices"/>
 
     <ListView
         android:id="@+id/knownDevicesListView"
@@ -54,7 +54,7 @@
         app:layout_constraintTop_toBottomOf="@id/knownDevicesListView"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        android:text="Found Devices"/>
+        android:text="@string/found_devices"/>
 
     <ListView
         android:id="@+id/bluetoothDevicesListView"
@@ -70,7 +70,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="end|bottom"
         android:src="@drawable/ic_create"
-        android:contentDescription="Send text"
+        android:contentDescription="@string/send_text"
         android:layout_margin="16dp"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />

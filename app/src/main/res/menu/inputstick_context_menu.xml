@@ -4,5 +4,5 @@
 
     <item
         android:id="@+id/forget"
-        android:title="Forget" />
+        android:title="@string/forget" />
 </menu>
