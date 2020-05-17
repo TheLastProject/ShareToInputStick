@@ -1,0 +1,1 @@
+Fix state loss on screen rotation
