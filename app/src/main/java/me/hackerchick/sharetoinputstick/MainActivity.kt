@@ -209,7 +209,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private fun start() {
         val model: InputStickViewModel by viewModels()
 
-        if (!model.hasTextToSend()) {
+        if (model.getTextToSend().value!!.isEmpty()) {
             title = "Edit InputSticks"
             mFab?.visibility = View.VISIBLE
             mUseInputUtilityButton?.visibility = View.GONE
@@ -329,7 +329,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     val inputStick = model.retrieveInputStick(device)
                     model.addToBluetoothDevicesList(inputStick)
 
-                    if (inputStick == model.getWaitingDevice().value) {
+                    var waitingDevice = model.getWaitingDevice().value
+                    if (waitingDevice != null && inputStick == waitingDevice) {
                         // We were waiting for this device, connect now
                         model.setWaitingDevice(null)
                         connectToInputStickUsingBluetooth(inputStick)
@@ -408,10 +409,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 updateBusyDialog(this, "Connecting...")
             }
             ConnectionManager.STATE_READY -> {
-                if (model.hasTextToSend()) {
+                var connectingDevice = model.getConnectingDevice().value!!
+                var textToSend = model.getTextToSend().value!!
+                if (textToSend.isNotEmpty()) {
                     // Send mode
                     updateBusyDialog(this, "Sending data...")
-                    sendToBluetoothDevice(model.getConnectingDevice().value!!, model.getTextToSend().value!!)
+                    sendToBluetoothDevice(connectingDevice, textToSend)
                     closeAfterSendingCompletes()
                 } else {
                     // Configure mode
@@ -420,16 +423,15 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
                     AlertDialog.Builder(this)
                         .setTitle("Connection test successful")
-                        .setMessage(String.format("Successfully connected to device %s with mac address %s. Use Android's share menu to send text to your InputStick.", model.getConnectingDevice().value!!.name, model.getConnectingDevice().value!!.mac))
+                        .setMessage(String.format("Successfully connected to device %s with mac address %s. Use Android's share menu to send text to your InputStick.", connectingDevice.name, connectingDevice.mac))
                         .setPositiveButton("OK") { _: DialogInterface, _: Int -> }
                         .show()
 
                     InputStickHID.disconnect()
 
                     // Consider device used
-                    var device = model.getConnectingDevice().value!!
-                    device.last_used = System.currentTimeMillis()
-                    model.editKnownDevice(device)
+                    connectingDevice.last_used = System.currentTimeMillis()
+                    model.editKnownDevice(connectingDevice)
                 }
             }
             ConnectionManager.STATE_FAILURE -> {

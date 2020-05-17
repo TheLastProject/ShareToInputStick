@@ -69,20 +69,20 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
         _bluetoothDevicesList.value = data
     }
 
-    private val mWaitingDevice: MutableLiveData<InputStick> = MutableLiveData()
+    private val _waitingDevice: MutableLiveData<InputStick> = MutableLiveData()
     fun getWaitingDevice(): LiveData<InputStick?> {
-        return mWaitingDevice
+        return _waitingDevice
     }
     fun setWaitingDevice(inputStick: InputStick?) {
-        getWaitingDevice().value == inputStick
+        _waitingDevice.value = inputStick
     }
 
-    private val mConnectingDevice: MutableLiveData<InputStick?> = MutableLiveData()
+    private val _connectingDevice: MutableLiveData<InputStick?> = MutableLiveData()
     fun getConnectingDevice(): LiveData<InputStick?> {
-        return mConnectingDevice
+        return _connectingDevice
     }
     fun setConnectingDevice(inputStick: InputStick?) {
-        getConnectingDevice().value == inputStick
+        _connectingDevice.value = inputStick
     }
 
     private var _busyDialogMessage: String? = null
@@ -107,11 +107,6 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setTextToSend(text: String) {
         _textToSend.value = text
-    }
-
-    fun hasTextToSend(): Boolean {
-        var text = getTextToSend()
-        return text.value!!.isNotEmpty()
     }
 
     private val _inputSpeed = MutableLiveData<Int>()
