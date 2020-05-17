@@ -1,15 +1,11 @@
 package me.hackerchick.sharetoinputstick
 
-import android.app.AlertDialog
 import android.app.Application
 import android.bluetooth.BluetoothDevice
-import android.content.Context
-import android.content.DialogInterface
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.room.Room
-import com.inputstick.api.basic.InputStickHID
 import com.inputstick.api.basic.InputStickKeyboard
 
 class InputStickViewModel(application: Application) : AndroidViewModel(application) {
@@ -121,6 +117,20 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setInputSpeed(inputSpeed: Int) {
         _inputSpeed.value = inputSpeed
+    }
+
+    private val _sending = MutableLiveData<Boolean>()
+
+    fun isSending(): LiveData<Boolean> {
+        if (_sending.value == null) {
+            _sending.value = false
+        }
+
+        return _sending
+    }
+
+    fun setSending(value: Boolean) {
+        _sending.value = value
     }
 
     private fun loadKnownDevicesList(): ArrayList<InputStick> {

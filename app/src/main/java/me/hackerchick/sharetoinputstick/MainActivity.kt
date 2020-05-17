@@ -221,6 +221,11 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         // Reshow dialog if in progress
         updateBusyDialog(this, model.getBusyDialogMessage())
+
+        // If sending, close after it completes
+        if (model.isSending().value!!) {
+            closeAfterSendingCompletes()
+        }
     }
 
     private fun getDevicePassword(inputStick: InputStick) : String? {
@@ -278,7 +283,9 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             // Not registered yet, that's fine
         }
 
-        InputStickHID.disconnect()
+        if (isFinishing) {
+            InputStickHID.disconnect()
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -413,6 +420,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 var textToSend = model.getTextToSend().value!!
                 if (textToSend.isNotEmpty()) {
                     // Send mode
+                    model.setSending(true)
                     updateBusyDialog(this, "Sending data...")
                     sendToBluetoothDevice(connectingDevice, textToSend)
                     closeAfterSendingCompletes()
