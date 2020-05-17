@@ -14,9 +14,10 @@ import android.widget.AdapterView
 import android.widget.EditText
 import android.widget.ListView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.room.Room
+import androidx.lifecycle.Observer
 import com.inputstick.api.ConnectionManager
 import com.inputstick.api.InputStickError
 import com.inputstick.api.InputStickStateListener
@@ -30,45 +31,33 @@ import java.util.concurrent.TimeUnit
 
 
 class MainActivity : AppCompatActivity(), InputStickStateListener {
-    private var inputStickDao: InputStickDao? = null
-
     private var mBluetoothAdapter: BluetoothAdapter? = null
     private var mBluetoothAdapterAutoRescan: Boolean = true
 
     private var mKnownDevicesListView: ListView? = null
     private var mBluetoothDevicesListView: ListView? = null
-    private val mKnownDevicesList = ArrayList<InputStick>()
-    private val mBluetoothDevicesList = ArrayList<InputStick>()
-
-    private var mWaitingDevice: InputStick? = null
-    private var mConnectingDevice: InputStick? = null
 
     private var mBusyDialog: AlertDialog? = null
 
     private var PERMISSION_REQUEST_BLUETOOTH = 1
     private var REQUEST_ENABLE_BLUETOOTH = 2
 
-    private var mTextToSend: String = ""
-
     private var mUseInputUtilityButton: View? = null
     private var mFab: View? = null
 
-    private var mInputSpeed: Int = InputStickKeyboard.TYPING_SPEED_NORMAL
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_main)
 
         setSupportActionBar(findViewById(R.id.appbar))
 
-        inputStickDao = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java, "inputsticks"
-        ).allowMainThreadQueries().build().inputStickDao()
+        val model: InputStickViewModel by viewModels()
 
         if (intent?.action == Intent.ACTION_SEND) {
-            if (intent.getStringExtra(Intent.EXTRA_TEXT) != null) {
-                mTextToSend = intent.getStringExtra(Intent.EXTRA_TEXT)!!
+            var extraText = intent.getStringExtra(Intent.EXTRA_TEXT)
+            if (extraText != null) {
+                model.setTextToSend(extraText)
             }
         }
 
@@ -88,13 +77,33 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         mKnownDevicesListView = findViewById(R.id.knownDevicesListView)
         registerForContextMenu(mKnownDevicesListView)
         mKnownDevicesListView?.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(mKnownDevicesList[position])
+            connectToInputStickUsingBluetooth(model.getKnownDevicesList().value!![position])
         }
 
         mBluetoothDevicesListView = findViewById(R.id.bluetoothDevicesListView)
         mBluetoothDevicesListView?.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(mBluetoothDevicesList[position])
+            connectToInputStickUsingBluetooth(model.getBluetoothDevicesList().value!![position])
         }
+
+        // Update lists on change
+        model.getKnownDevicesList().observe(this, Observer<ArrayList<InputStick>> {
+            var bluetoothDevices = model.getBluetoothDevicesList().value
+            if (bluetoothDevices == null) {
+                bluetoothDevices = ArrayList<InputStick>()
+            }
+            knownDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it, bluetoothDevices)
+        })
+        model.getBluetoothDevicesList().observe(this, Observer<ArrayList<InputStick>> {
+            bluetoothDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it)
+            var knownDevices = model.getKnownDevicesList().value
+            if (knownDevices != null) {
+                knownDevicesListView?.adapter = InputStickAdapter(
+                    this.applicationContext,
+                    knownDevices,
+                    it
+                )
+            }
+        })
 
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
         startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH)
@@ -116,30 +125,56 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         InputStickHID.addStateListener(this)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val model: InputStickViewModel by viewModels()
+
         var inflater: MenuInflater = menuInflater
         inflater.inflate(R.menu.main_menu, menu)
+
+        when (model.getInputSpeed().value) {
+            InputStickKeyboard.TYPING_SPEED_NORMAL -> {
+                val menuItem = menu.findItem(R.id.option_typing_speed_100)
+                menuItem.isChecked = true
+            }
+            InputStickKeyboard.TYPING_SPEED_050X -> {
+                val menuItem = menu.findItem(R.id.option_typing_speed_50)
+                menuItem.isChecked = true
+            }
+            InputStickKeyboard.TYPING_SPEED_033X -> {
+                val menuItem = menu.findItem(R.id.option_typing_speed_33)
+                menuItem.isChecked = true
+            }
+            InputStickKeyboard.TYPING_SPEED_025X -> {
+                val menuItem = menu.findItem(R.id.option_typing_speed_25)
+                menuItem.isChecked = true
+            }
+        }
+
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
         R.id.option_typing_speed_100 -> {
-            mInputSpeed = InputStickKeyboard.TYPING_SPEED_NORMAL
+            val model: InputStickViewModel by viewModels()
+            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_NORMAL)
             item.isChecked = true
             true
         }
         R.id.option_typing_speed_50 -> {
-            mInputSpeed = InputStickKeyboard.TYPING_SPEED_050X
+            val model: InputStickViewModel by viewModels()
+            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_050X)
             item.isChecked = true
             true
         }
         R.id.option_typing_speed_33 -> {
-            mInputSpeed = InputStickKeyboard.TYPING_SPEED_033X
+            val model: InputStickViewModel by viewModels()
+            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_033X)
             item.isChecked = true
             true
         }
         R.id.option_typing_speed_25 -> {
-            mInputSpeed = InputStickKeyboard.TYPING_SPEED_025X
+            val model: InputStickViewModel by viewModels()
+            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_025X)
             item.isChecked = true
             true
         }
@@ -155,15 +190,16 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     override fun onContextItemSelected(item: MenuItem): Boolean {
+        val model: InputStickViewModel by viewModels()
+
         val info = item.menuInfo as AdapterView.AdapterContextMenuInfo
         return when (item.itemId) {
             R.id.forget -> {
-                val device = mKnownDevicesList[info.position]
+                val device = model.getKnownDevicesList().value!![info.position]
                 device.password = null
                 device.last_used = 0
-                inputStickDao!!.update(device)
+                model.editKnownDevice(device)
 
-                updateBluetoothDeviceList(this)
                 true
             }
             else -> super.onContextItemSelected(item)
@@ -171,7 +207,9 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun start() {
-        if (mTextToSend.isEmpty()) {
+        val model: InputStickViewModel by viewModels()
+
+        if (!model.hasTextToSend()) {
             title = "Edit InputSticks"
             mFab?.visibility = View.VISIBLE
             mUseInputUtilityButton?.visibility = View.GONE
@@ -181,26 +219,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             mUseInputUtilityButton?.visibility = View.VISIBLE
         }
 
-        updateBluetoothDeviceList(this)
-    }
-
-    private fun getInputStickFromDB(macAddress: String) : InputStick {
-        var inputStick = inputStickDao!!.findByMac(macAddress)
-        if (inputStick == null) {
-            inputStick = InputStick(macAddress, null, null, 0)
-            inputStickDao!!.insert(inputStick)
-        }
-        return inputStick
-    }
-
-    private fun getInputStickFromDB(bluetoothDevice: BluetoothDevice) : InputStick {
-        var inputStick = getInputStickFromDB(bluetoothDevice.address)
-        if (inputStick.name != bluetoothDevice.name) {
-            inputStick.name = bluetoothDevice.name
-            inputStickDao!!.update(inputStick)
-        }
-
-        return inputStick
+        // Reshow dialog if in progress
+        updateBusyDialog(this, model.getBusyDialogMessage())
     }
 
     private fun getDevicePassword(inputStick: InputStick) : String? {
@@ -208,21 +228,23 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun setDevicePassword(inputStick: InputStick, devicePassword: String?) {
+        val model: InputStickViewModel by viewModels()
+
         inputStick.password = devicePassword
         inputStick.last_used = System.currentTimeMillis() / 1000
-        inputStickDao!!.update(inputStick)
-
-        updateKnownDeviceList(this)
+        model.editKnownDevice(inputStick)
     }
 
     private fun connectToInputStickUsingBluetooth(device: InputStick) {
-        if (!mBluetoothDevicesList.contains(device)) {
-            updateBusyDialog(this, "Waiting for device to show up in Bluetooth scan...")
-            mWaitingDevice = device
+        val model: InputStickViewModel by viewModels()
+
+        if (!model.bluetoothDevicesListContains(device)) {
+            updateBusyDialog(this,"Waiting for device to show up in Bluetooth scan...")
+            model.setWaitingDevice(device)
             return
         }
 
-        mConnectingDevice = device
+        model.setConnectingDevice(device)
 
         var connectionPassword: ByteArray? = null
         if (getDevicePassword(device) != null) {
@@ -232,7 +254,9 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun sendMessageUsingInputStickUtility() {
-        InputStickBroadcast.type(applicationContext, mTextToSend, "en-US")
+        val model: InputStickViewModel by viewModels()
+
+        InputStickBroadcast.type(applicationContext, model.getTextToSend().value, "en-US")
         Toast.makeText(applicationContext, "Sent text to InputStickUtility…", Toast.LENGTH_SHORT).show()
         finish()
     }
@@ -294,25 +318,23 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private val mReceiver = object : BroadcastReceiver() {
+        val model: InputStickViewModel by viewModels()
+
         override fun onReceive(context: Context, intent: Intent) {
             if (BluetoothDevice.ACTION_FOUND == intent.action) {
                 val device = intent
                     .getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
 
                 if (device != null) {
-                    val inputStick = getInputStickFromDB(device)
-                    if (!mBluetoothDevicesList.contains(inputStick)) {
-                        mBluetoothDevicesList.add(inputStick)
-                    }
+                    val inputStick = model.retrieveInputStick(device)
+                    model.addToBluetoothDevicesList(inputStick)
 
-                    if (inputStick == mWaitingDevice) {
+                    if (inputStick == model.getWaitingDevice().value) {
                         // We were waiting for this device, connect now
-                        mWaitingDevice = null
+                        model.setWaitingDevice(null)
                         connectToInputStickUsingBluetooth(inputStick)
                     }
                 }
-
-                updateBluetoothDeviceList(context)
             }
             else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED == intent.action) {
                 if (mBluetoothAdapterAutoRescan) {
@@ -350,6 +372,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun showNewMessageDialog() {
+        val model: InputStickViewModel by viewModels()
+
         val editText = EditText(this)
         editText.inputType = InputType.TYPE_CLASS_TEXT
 
@@ -358,7 +382,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             .setMessage(String.format("Enter the text to send"))
             .setView(editText)
             .setPositiveButton("Send") { _: DialogInterface, _: Int ->
-                mTextToSend = editText.text.toString()
+                model.setTextToSend(editText.text.toString())
                 start()
             }
             .setNegativeButton("Cancel") { _: DialogInterface, _: Int -> }
@@ -373,20 +397,9 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         Toast.makeText(this, "Can only show the Use InputStickUtility option without Bluetooth and location permission...", Toast.LENGTH_LONG).show()
     }
 
-    private fun updateBluetoothDeviceList(context: Context) {
-        bluetoothDevicesListView?.adapter = InputStickAdapter(context, mBluetoothDevicesList)
-
-        updateKnownDeviceList(context)
-    }
-
-    private fun updateKnownDeviceList(context: Context) {
-        mKnownDevicesList.clear()
-        mKnownDevicesList.addAll(inputStickDao?.getAllByLastUsed() as ArrayList)
-
-        knownDevicesListView?.adapter = InputStickAdapter(context, mKnownDevicesList, mBluetoothDevicesList)
-    }
-
     override fun onStateChanged(state: Int) {
+        val model: InputStickViewModel by viewModels()
+
         when (state) {
             ConnectionManager.STATE_CONNECTED -> {
                 updateBusyDialog(this, "Preparing...")
@@ -395,10 +408,10 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 updateBusyDialog(this, "Connecting...")
             }
             ConnectionManager.STATE_READY -> {
-                if (mTextToSend.isNotEmpty()) {
+                if (model.hasTextToSend()) {
                     // Send mode
                     updateBusyDialog(this, "Sending data...")
-                    sendToBluetoothDevice(mConnectingDevice!!, mTextToSend)
+                    sendToBluetoothDevice(model.getConnectingDevice().value!!, model.getTextToSend().value!!)
                     closeAfterSendingCompletes()
                 } else {
                     // Configure mode
@@ -407,17 +420,16 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
                     AlertDialog.Builder(this)
                         .setTitle("Connection test successful")
-                        .setMessage(String.format("Successfully connected to device %s with mac address %s. Use Android's share menu to send text to your InputStick.", mConnectingDevice!!.name, mConnectingDevice!!.mac))
+                        .setMessage(String.format("Successfully connected to device %s with mac address %s. Use Android's share menu to send text to your InputStick.", model.getConnectingDevice().value!!.name, model.getConnectingDevice().value!!.mac))
                         .setPositiveButton("OK") { _: DialogInterface, _: Int -> }
                         .show()
 
                     InputStickHID.disconnect()
 
                     // Consider device used
-                    mConnectingDevice!!.last_used = System.currentTimeMillis()
-                    inputStickDao?.update(mConnectingDevice!!)
-
-                    updateBluetoothDeviceList(this)
+                    var device = model.getConnectingDevice().value!!
+                    device.last_used = System.currentTimeMillis()
+                    model.editKnownDevice(device)
                 }
             }
             ConnectionManager.STATE_FAILURE -> {
@@ -430,7 +442,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     InputStickError.ERROR_SECURITY_NOT_PROTECTED,
                     InputStickError.ERROR_SECURITY_NOT_SUPPORTED,
                     InputStickError.ERROR_SECURITY_NO_KEY -> {
-                        showIncorrectPasswordDialog(mConnectingDevice!!)
+                        showIncorrectPasswordDialog(model.getConnectingDevice().value!!)
                     }
                     else -> {
                         AlertDialog.Builder(this)
@@ -445,17 +457,23 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     }
 
     private fun sendToBluetoothDevice(inputStick: InputStick, textToSend: String) {
-        inputStick.last_used = System.currentTimeMillis()
-        inputStickDao!!.update(inputStick)
+        val model: InputStickViewModel by viewModels()
 
-        InputStickKeyboard.type(textToSend, "en-US", mInputSpeed)
+        inputStick.last_used = System.currentTimeMillis()
+        model.editKnownDevice(inputStick)
+
+        InputStickKeyboard.type(textToSend, "en-US", model.getInputSpeed().value!!)
     }
 
     private fun updateBusyDialog(context: Context, message: String?) {
+        val model: InputStickViewModel by viewModels()
+        model.setBusyDialogMessage(message)
+
         if (mBusyDialog == null) {
             mBusyDialog = AlertDialog.Builder(context)
                 .setNegativeButton("Cancel") { _: DialogInterface, _: Int ->
                     InputStickHID.disconnect()
+                    model.setBusyDialogMessage(null)
                 }
                 .create()
         }
