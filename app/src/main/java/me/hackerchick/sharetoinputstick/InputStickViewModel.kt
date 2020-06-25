@@ -30,19 +30,25 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
         _knownDevicesList.value = data
     }
 
-    fun editKnownDevice(inputStick: InputStick) {
+    fun editDevice(inputStick: InputStick) {
         inputStickDao.update(inputStick)
 
         var data = getKnownDevicesList().value!!
 
         for (device in data) {
+            // See if it is an already known device, if so, remove
             if (device.mac == inputStick.mac) {
                 data.remove(device)
-                data.add(inputStick)
-                _knownDevicesList.value = data
                 break
             }
         }
+
+        // And (re)add if marked as used before
+        if (inputStick.last_used > 0) {
+            data.add(inputStick)
+        }
+
+        _knownDevicesList.value = data
     }
 
     private val _bluetoothDevicesList = MutableLiveData<ArrayList<InputStick>>()

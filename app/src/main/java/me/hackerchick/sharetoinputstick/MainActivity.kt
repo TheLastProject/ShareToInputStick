@@ -198,7 +198,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 val device = model.getKnownDevicesList().value!![info.position]
                 device.password = null
                 device.last_used = 0
-                model.editKnownDevice(device)
+                model.editDevice(device)
 
                 true
             }
@@ -236,8 +236,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         val model: InputStickViewModel by viewModels()
 
         inputStick.password = devicePassword
-        inputStick.last_used = System.currentTimeMillis() / 1000
-        model.editKnownDevice(inputStick)
+        inputStick.last_used = System.currentTimeMillis()
+        model.editDevice(inputStick)
     }
 
     private fun connectToInputStickUsingBluetooth(device: InputStick) {
@@ -439,7 +439,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
                     // Consider device used
                     connectingDevice.last_used = System.currentTimeMillis()
-                    model.editKnownDevice(connectingDevice)
+                    model.editDevice(connectingDevice)
                 }
             }
             ConnectionManager.STATE_FAILURE -> {
@@ -470,7 +470,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         val model: InputStickViewModel by viewModels()
 
         inputStick.last_used = System.currentTimeMillis()
-        model.editKnownDevice(inputStick)
+        model.editDevice(inputStick)
 
         InputStickKeyboard.type(textToSend, "en-US", model.getInputSpeed().value!!)
     }
