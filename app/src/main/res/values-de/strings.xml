@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Share To InputStick</string>
+    <string name="use_inputstickutility_must_be_installed">Gebrauch InputStickUtility (Muss installiert werden)</string>
+    <string name="known_devices">Bekannte Geräte</string>
+    <string name="found_devices">Geräte gefunden</string>
+    <string name="send_text">Text senden</string>
+    <string name="forget">Vergessen</string>
+    <string name="typing_speed">Tippgeschwindigkeit</string>
+</resources>
