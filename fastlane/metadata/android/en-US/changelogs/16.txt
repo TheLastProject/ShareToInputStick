@@ -1,0 +1,3 @@
+Fix colour in dark mode
+Fix bluetooth icon not always appearing
+Fix passwords of InputSticks not being saved

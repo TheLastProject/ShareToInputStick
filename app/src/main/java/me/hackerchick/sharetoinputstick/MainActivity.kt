@@ -45,12 +45,16 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var mUseInputUtilityButton: View? = null
     private var mFab: View? = null
 
+    private var dbHelper: DBHelper? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
 
         setSupportActionBar(findViewById(R.id.appbar))
+
+        dbHelper = DBHelper(this)
 
         val model: InputStickViewModel by viewModels()
 
@@ -77,12 +81,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         mKnownDevicesListView = findViewById(R.id.knownDevicesListView)
         registerForContextMenu(mKnownDevicesListView)
         mKnownDevicesListView?.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(model.getKnownDevicesList(applicationContext).value!![position])
+            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(model.getKnownDevicesList(applicationContext).value!![position].mac)!!)
         }
 
         mBluetoothDevicesListView = findViewById(R.id.bluetoothDevicesListView)
         mBluetoothDevicesListView?.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(model.getBluetoothDevicesList().value!![position])
+            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(model.getBluetoothDevicesList().value!![position].mac)!!)
         }
 
         val knownDevicesObserver = Observer<ArrayList<InputStick>> {
