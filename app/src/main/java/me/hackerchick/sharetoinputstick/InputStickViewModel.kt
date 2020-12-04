@@ -2,6 +2,7 @@ package me.hackerchick.sharetoinputstick
 
 import android.app.Application
 import android.bluetooth.BluetoothDevice
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -9,31 +10,21 @@ import androidx.room.Room
 import com.inputstick.api.basic.InputStickKeyboard
 
 class InputStickViewModel(application: Application) : AndroidViewModel(application) {
-    private val inputStickDao = Room.databaseBuilder(
-        this.getApplication(),
-        AppDatabase::class.java, "inputsticks"
-    ).allowMainThreadQueries().build().inputStickDao()
-
     private val _knownDevicesList = MutableLiveData<ArrayList<InputStick>>()
 
-    fun getKnownDevicesList(): LiveData<ArrayList<InputStick>> {
+    fun getKnownDevicesList(context: Context): LiveData<ArrayList<InputStick>> {
         if (_knownDevicesList.value == null) {
-            _knownDevicesList.value = loadKnownDevicesList()
+            _knownDevicesList.value = loadKnownDevicesList(context)
         }
 
         return _knownDevicesList
     }
 
-    private fun addToKnownDevicesList(inputStick: InputStick) {
-        var data = getKnownDevicesList().value
-        data!!.add(inputStick)
-        _knownDevicesList.value = data
-    }
+    fun editDevice(context: Context, inputStick: InputStick) {
+        val db = DBHelper(context)
+        db.upsertInputStick(inputStick.mac, inputStick.name, inputStick.password, inputStick.last_used)
 
-    fun editDevice(inputStick: InputStick) {
-        inputStickDao.update(inputStick)
-
-        var data = getKnownDevicesList().value!!
+        var data = getKnownDevicesList(context).value!!
 
         for (device in data) {
             // See if it is an already known device, if so, remove
@@ -139,25 +130,29 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
         _sending.value = value
     }
 
-    private fun loadKnownDevicesList(): ArrayList<InputStick> {
-        return inputStickDao.getAllByLastUsed() as ArrayList<InputStick>
+    private fun loadKnownDevicesList(context: Context): ArrayList<InputStick> {
+        val db = DBHelper(context)
+        return db.getAllByLastUsed() as ArrayList<InputStick>
     }
 
-    private fun retrieveInputStick(mac: String): InputStick {
-        var inputStick = inputStickDao.findByMac(mac)
+    private fun retrieveInputStick(context: Context, mac: String): InputStick {
+        val db = DBHelper(context)
+
+        var inputStick = db.getInputStick(mac)
         if (inputStick == null) {
-            inputStick = InputStick(mac)
+            inputStick = InputStick(mac, null, null, 0)
         }
 
         return inputStick
     }
 
-    fun retrieveInputStick(bluetoothDevice: BluetoothDevice): InputStick {
-        var inputStick = retrieveInputStick(bluetoothDevice.address)
+    fun retrieveInputStick(context: Context, bluetoothDevice: BluetoothDevice): InputStick {
+        var inputStick = retrieveInputStick(context, bluetoothDevice.address)
         if (inputStick.name != bluetoothDevice.name) {
             inputStick.name = bluetoothDevice.name
 
-            inputStickDao.update(inputStick)
+            val db = DBHelper(context)
+            db.upsertInputStick(inputStick.mac, inputStick.name, inputStick.password, inputStick.last_used)
         }
 
         return inputStick

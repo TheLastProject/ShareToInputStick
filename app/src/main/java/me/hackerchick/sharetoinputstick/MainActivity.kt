@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         mKnownDevicesListView = findViewById(R.id.knownDevicesListView)
         registerForContextMenu(mKnownDevicesListView)
         mKnownDevicesListView?.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(model.getKnownDevicesList().value!![position])
+            connectToInputStickUsingBluetooth(model.getKnownDevicesList(applicationContext).value!![position])
         }
 
         mBluetoothDevicesListView = findViewById(R.id.bluetoothDevicesListView)
@@ -86,7 +86,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
 
         // Update lists on change
-        model.getKnownDevicesList().observe(this, Observer<ArrayList<InputStick>> {
+        model.getKnownDevicesList(applicationContext).observe(this, Observer<ArrayList<InputStick>> {
             var bluetoothDevices = model.getBluetoothDevicesList().value
             if (bluetoothDevices == null) {
                 bluetoothDevices = ArrayList<InputStick>()
@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         })
         model.getBluetoothDevicesList().observe(this, Observer<ArrayList<InputStick>> {
             bluetoothDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it)
-            var knownDevices = model.getKnownDevicesList().value
+            var knownDevices = model.getKnownDevicesList(applicationContext).value
             if (knownDevices != null) {
                 knownDevicesListView?.adapter = InputStickAdapter(
                     this.applicationContext,
@@ -195,10 +195,10 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         val info = item.menuInfo as AdapterView.AdapterContextMenuInfo
         return when (item.itemId) {
             R.id.forget -> {
-                val device = model.getKnownDevicesList().value!![info.position]
+                val device = model.getKnownDevicesList(applicationContext).value!![info.position]
                 device.password = null
                 device.last_used = 0
-                model.editDevice(device)
+                model.editDevice(applicationContext, device)
 
                 true
             }
@@ -237,7 +237,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         inputStick.password = devicePassword
         inputStick.last_used = System.currentTimeMillis()
-        model.editDevice(inputStick)
+        model.editDevice(applicationContext, inputStick)
     }
 
     private fun connectToInputStickUsingBluetooth(device: InputStick) {
@@ -333,7 +333,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     .getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
 
                 if (device != null) {
-                    val inputStick = model.retrieveInputStick(device)
+                    val inputStick = model.retrieveInputStick(applicationContext, device)
                     model.addToBluetoothDevicesList(inputStick)
 
                     var waitingDevice = model.getWaitingDevice().value
@@ -440,7 +440,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
                 // Consider device used
                 connectingDevice.last_used = System.currentTimeMillis()
-                model.editDevice(connectingDevice)
+                model.editDevice(applicationContext, connectingDevice)
             }
             ConnectionManager.STATE_FAILURE -> {
                 updateBusyDialog(this, null)
@@ -470,7 +470,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         val model: InputStickViewModel by viewModels()
 
         inputStick.last_used = System.currentTimeMillis()
-        model.editDevice(inputStick)
+        model.editDevice(applicationContext, inputStick)
 
         InputStickKeyboard.type(textToSend, "en-US", model.getInputSpeed().value!!)
     }

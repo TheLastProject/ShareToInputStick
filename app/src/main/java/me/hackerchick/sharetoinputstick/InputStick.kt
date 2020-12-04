@@ -1,18 +1,21 @@
 package me.hackerchick.sharetoinputstick
 
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import android.database.Cursor
 
-@Entity
-data class InputStick(
-    @PrimaryKey val mac: String) {
-        @ColumnInfo(name = "name")
-        var name: String? = null
-
-        @ColumnInfo(name = "password")
-        var password: String? = null
-
-        @ColumnInfo(name = "last_used")
-        var last_used: Long = 0  // Unix Time
+class InputStick(
+    val mac: String, var name: String?, var password: String?, var last_used: Long) {
+    companion object {
+        fun toInputStick(cursor: Cursor): InputStick {
+            val mac = cursor.getString(cursor.getColumnIndexOrThrow(DBHelper.InputSticksDB.MAC))
+            val name = cursor.getString(cursor.getColumnIndexOrThrow(DBHelper.InputSticksDB.NAME))
+            val password = cursor.getString(cursor.getColumnIndexOrThrow(DBHelper.InputSticksDB.PASSWORD))
+            val lastUsed = cursor.getLong(cursor.getColumnIndexOrThrow(DBHelper.InputSticksDB.LAST_USED))
+            return InputStick(
+                mac,
+                name,
+                password,
+                lastUsed
+            )
+        }
+    }
 }

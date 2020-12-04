@@ -15,6 +15,7 @@
 .cxx
 
 /app/release
+/app/debug
 
 # Fastlane
 # fastlane specific
