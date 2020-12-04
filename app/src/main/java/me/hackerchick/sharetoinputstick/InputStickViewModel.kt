@@ -146,7 +146,7 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
     private fun retrieveInputStick(mac: String): InputStick {
         var inputStick = inputStickDao.findByMac(mac)
         if (inputStick == null) {
-            inputStick = InputStick(mac, null, null, 0)
+            inputStick = InputStick(mac)
         }
 
         return inputStick

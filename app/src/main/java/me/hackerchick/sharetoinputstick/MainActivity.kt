@@ -436,11 +436,11 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                         .show()
 
                     InputStickHID.disconnect()
-
-                    // Consider device used
-                    connectingDevice.last_used = System.currentTimeMillis()
-                    model.editDevice(connectingDevice)
                 }
+
+                // Consider device used
+                connectingDevice.last_used = System.currentTimeMillis()
+                model.editDevice(connectingDevice)
             }
             ConnectionManager.STATE_FAILURE -> {
                 updateBusyDialog(this, null)
