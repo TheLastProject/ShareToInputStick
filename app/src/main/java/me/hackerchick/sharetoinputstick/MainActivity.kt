@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         val model: InputStickViewModel by viewModels()
 
         if (intent?.action == Intent.ACTION_SEND) {
-            var extraText = intent.getStringExtra(Intent.EXTRA_TEXT)
+            val extraText = intent.getStringExtra(Intent.EXTRA_TEXT)
             if (extraText != null) {
                 model.setTextToSend(extraText)
             }
@@ -85,23 +85,22 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             connectToInputStickUsingBluetooth(model.getBluetoothDevicesList().value!![position])
         }
 
+        val knownDevicesObserver = Observer<ArrayList<InputStick>> {
+            knownDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it, model)
+        }
+
         // Update lists on change
-        model.getKnownDevicesList(applicationContext).observe(this, Observer<ArrayList<InputStick>> {
-            var bluetoothDevices = model.getBluetoothDevicesList().value
-            if (bluetoothDevices == null) {
-                bluetoothDevices = ArrayList<InputStick>()
-            }
-            knownDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it, bluetoothDevices)
-        })
+        model.getKnownDevicesList(applicationContext).observe(this, knownDevicesObserver);
         model.getBluetoothDevicesList().observe(this, Observer<ArrayList<InputStick>> {
-            bluetoothDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it)
+            bluetoothDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it, null)
             var knownDevices = model.getKnownDevicesList(applicationContext).value
             if (knownDevices != null) {
                 knownDevicesListView?.adapter = InputStickAdapter(
                     this.applicationContext,
                     knownDevices,
-                    it
+                    model
                 )
+                knownDevicesListView?.adapter
             }
         })
 

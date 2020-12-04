@@ -78,6 +78,7 @@ class DBHelper(context: Context?) :
             inputSticks.add(InputStick.toInputStick(data));
         }
 
+        data.close()
         return inputSticks
     }
 

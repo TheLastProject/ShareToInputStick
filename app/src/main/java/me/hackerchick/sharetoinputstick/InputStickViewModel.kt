@@ -53,7 +53,13 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun bluetoothDevicesListContains(inputStick: InputStick) : Boolean {
-        return getBluetoothDevicesList().value!!.contains(inputStick)
+        for (bluetoothDevice in getBluetoothDevicesList().value!!) {
+            if (bluetoothDevice.mac == inputStick.mac) {
+                return true
+            }
+        }
+
+        return false
     }
     fun addToBluetoothDevicesList(inputStick: InputStick) {
         var data = getBluetoothDevicesList().value!!
