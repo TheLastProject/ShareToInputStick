@@ -1,0 +1,1 @@
+Fix waiting for device appearing in bluetooth scan getting stuck

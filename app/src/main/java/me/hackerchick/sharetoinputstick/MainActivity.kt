@@ -29,7 +29,6 @@ import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
-
 class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var mBluetoothAdapter: BluetoothAdapter? = null
     private var mBluetoothAdapterAutoRescan: Boolean = true
@@ -97,7 +96,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         model.getKnownDevicesList(applicationContext).observe(this, knownDevicesObserver);
         model.getBluetoothDevicesList().observe(this, Observer<ArrayList<InputStick>> {
             bluetoothDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it, null)
-            var knownDevices = model.getKnownDevicesList(applicationContext).value
+            val knownDevices = model.getKnownDevicesList(applicationContext).value
             if (knownDevices != null) {
                 knownDevicesListView?.adapter = InputStickAdapter(
                     this.applicationContext,
@@ -131,7 +130,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val model: InputStickViewModel by viewModels()
 
-        var inflater: MenuInflater = menuInflater
+        val inflater: MenuInflater = menuInflater
         inflater.inflate(R.menu.main_menu, menu)
 
         when (model.getInputSpeed().value) {
@@ -339,8 +338,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     val inputStick = model.retrieveInputStick(applicationContext, device)
                     model.addToBluetoothDevicesList(inputStick)
 
-                    var waitingDevice = model.getWaitingDevice().value
-                    if (waitingDevice != null && inputStick == waitingDevice) {
+                    val waitingDevice = model.getWaitingDevice().value
+                    if (inputStick.mac == waitingDevice?.mac) {
                         // We were waiting for this device, connect now
                         model.setWaitingDevice(null)
                         connectToInputStickUsingBluetooth(inputStick)
@@ -419,8 +418,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 updateBusyDialog(this, "Connecting...")
             }
             ConnectionManager.STATE_READY -> {
-                var connectingDevice = model.getConnectingDevice().value!!
-                var textToSend = model.getTextToSend().value!!
+                val connectingDevice = model.getConnectingDevice().value!!
+                val textToSend = model.getTextToSend().value!!
                 if (textToSend.isNotEmpty()) {
                     // Send mode
                     model.setSending(true)
