@@ -1,0 +1,1 @@
+Fix no Bluetooth devices being found on Android 10
