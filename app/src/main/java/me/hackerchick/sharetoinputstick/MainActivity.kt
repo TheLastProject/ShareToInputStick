@@ -295,7 +295,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         if (requestCode == REQUEST_ENABLE_BLUETOOTH) {
             if (resultCode == Activity.RESULT_OK) {
                 // Ensure we have the needed permissions
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.ACCESS_COARSE_LOCATION), PERMISSION_REQUEST_BLUETOOTH)
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.ACCESS_FINE_LOCATION), PERMISSION_REQUEST_BLUETOOTH)
             }
             else if (resultCode == Activity.RESULT_CANCELED) {
                 showBluetoothDeniedToast()
