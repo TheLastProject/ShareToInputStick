@@ -5,8 +5,10 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.*
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.view.*
@@ -14,6 +16,7 @@ import android.widget.AdapterView
 import android.widget.EditText
 import android.widget.ListView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -39,7 +42,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private var mBusyDialog: AlertDialog? = null
 
     private var PERMISSION_REQUEST_BLUETOOTH = 1
-    private var REQUEST_ENABLE_BLUETOOTH = 2
 
     private var mUseInputUtilityButton: View? = null
     private var mFab: View? = null
@@ -93,8 +95,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
 
         // Update lists on change
-        model.getKnownDevicesList(applicationContext).observe(this, knownDevicesObserver);
-        model.getBluetoothDevicesList().observe(this, Observer<ArrayList<InputStick>> {
+        model.getKnownDevicesList(applicationContext).observe(this, knownDevicesObserver)
+        model.getBluetoothDevicesList().observe(this) {
             bluetoothDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it, null)
             val knownDevices = model.getKnownDevicesList(applicationContext).value
             if (knownDevices != null) {
@@ -105,10 +107,29 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 )
                 knownDevicesListView?.adapter
             }
-        })
+        }
 
-        val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-        startActivityForResult(enableBtIntent, REQUEST_ENABLE_BLUETOOTH)
+        // Ensure we have the needed permissions
+        if (Build.VERSION.SDK_INT >= 31) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN
+                ),
+                PERMISSION_REQUEST_BLUETOOTH
+            )
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(
+                    Manifest.permission.BLUETOOTH,
+                    Manifest.permission.BLUETOOTH_ADMIN,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ),
+                PERMISSION_REQUEST_BLUETOOTH
+            )
+        }
 
         start()
     }
@@ -290,31 +311,29 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_ENABLE_BLUETOOTH) {
-            if (resultCode == Activity.RESULT_OK) {
-                // Ensure we have the needed permissions
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.ACCESS_FINE_LOCATION), PERMISSION_REQUEST_BLUETOOTH)
-            }
-            else if (resultCode == Activity.RESULT_CANCELED) {
-                showBluetoothDeniedToast()
-            }
+    private val enableBluetoothActivityResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == Activity.RESULT_CANCELED) {
+            showBluetoothDeniedToast()
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             PERMISSION_REQUEST_BLUETOOTH -> {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    // Request enabling bluetooth
+                    val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                    enableBluetoothActivityResult.launch(enableBtIntent)
+
                     // Start watching Bluetooth devices
                     val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
                     filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
                     registerReceiver(mReceiver, filter)
 
                     // Create Bluetooth adapter
-                    mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+                    mBluetoothAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
 
                     // Start finding devices
                     mBluetoothAdapter!!.startDiscovery()
@@ -331,8 +350,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         override fun onReceive(context: Context, intent: Intent) {
             if (BluetoothDevice.ACTION_FOUND == intent.action) {
-                val device = intent
-                    .getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                val device = if (Build.VERSION.SDK_INT >= 33) {
+                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                }
 
                 if (device != null) {
                     val inputStick = model.retrieveInputStick(applicationContext, device)
