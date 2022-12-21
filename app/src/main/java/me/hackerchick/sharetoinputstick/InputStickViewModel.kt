@@ -68,7 +68,7 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
         _bluetoothDevicesList.value = data
     }
 
-    private val _waitingDevice: MutableLiveData<InputStick> = MutableLiveData()
+    private val _waitingDevice: MutableLiveData<InputStick?> = MutableLiveData()
     fun getWaitingDevice(): LiveData<InputStick?> {
         return _waitingDevice
     }
