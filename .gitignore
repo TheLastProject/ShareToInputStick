@@ -1,31 +1,33 @@
-# Android Studio
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log/OS Files
+*.log
+
+# Android Studio generated files and folders
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+output.json
+
+# IntelliJ
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+.idea/
+misc.xml
+deploymentTargetDropDown.xml
+render.experimental.xml
 
-/app/release
-/app/debug
+# Keystore files
+*.jks
+*.keystore
 
-# Fastlane
-# fastlane specific
-**/fastlane/report.xml
+# Google Services (e.g. APIs or Firebase)
+google-services.json
 
-# deliver temporary files
-**/fastlane/Preview.html
-
-# snapshot generated screenshots
-**/fastlane/screenshots
-
-# scan temporary files
-**/fastlane/test_output
+# Android Profiling
+*.hprof
