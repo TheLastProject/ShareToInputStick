@@ -336,7 +336,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                     mBluetoothAdapter = (getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
 
                     // Start finding devices
-                    mBluetoothAdapter!!.startDiscovery()
+                    if (mBluetoothAdapter != null) {
+                        mBluetoothAdapter!!.startDiscovery()
+                    } else {
+                        Toast.makeText(this, "Bluetooth doesn't seem to be available on this device, exiting...", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
                 } else {
                     showBluetoothDeniedToast()
                 }
