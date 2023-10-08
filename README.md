@@ -2,16 +2,24 @@
 
 Adds an entry to Android's Share menu to directly share text to an [InputStick](http://inputstick.com/).
 
-## How to build
+# Building
 
-First, clone everything:
+Building can either be done through Android Studio (not reproducible!) or the build.sh script in this repository (reproducibly with OpenJDK 17, same way F-Droid builds it). This script can also sign the build.
+
+First, ensure your git submodule is up-to-date:
 ```
-git clone https://github.com/TheLastProject/ShareToInputStick
-cd ShareToInputStick
-git submodule update --init
+git submodule --init
 ```
 
-Then, open Android Studio and hit build.
+Build without signing:
+```
+./build.sh
+```
+
+Build with signing:
+```
+KEYSTORE=/path/to/keystore KEYSTORE_ALIAS=key0 ./build.sh
+```
 
 ## License
 
