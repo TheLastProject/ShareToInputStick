@@ -4,7 +4,7 @@ Adds an entry to Android's Share menu to directly share text to an [InputStick](
 
 # Building
 
-Building can either be done through Android Studio (not reproducible!) or the build.sh script in this repository (reproducibly with OpenJDK 17, same way F-Droid builds it). This script can also sign the build.
+Building can either be done through Android Studio (not reproducible!) or the build.sh script in this repository (reproducibly with OpenJDK 11, same way F-Droid builds it). This script can also sign the build.
 
 First, ensure your git submodule is up-to-date:
 ```
