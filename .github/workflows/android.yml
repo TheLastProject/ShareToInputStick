@@ -1,0 +1,44 @@
+name: Android CI
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+permissions:
+  actions: none
+  checks: none
+  contents: read
+  deployments: none
+  discussions: none
+  id-token: none
+  issues: none
+  packages: none
+  pages: none
+  pull-requests: none
+  repository-projects: none
+  security-events: none
+  statuses: none
+env:
+  JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4.1.0
+      with:
+        submodules: recursive
+    - name: Fail on bad translations
+      run: if grep -ri "&lt;xliff" app/src/main/res/values*/strings.xml; then echo "Invalidly escaped translations found"; exit 1; fi
+    - uses: gradle/wrapper-validation-action@v1
+    - name: set up OpenJDK 11
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-11-jdk-headless
+        sudo update-alternatives --auto java
+    - name: Build
+      run: ./gradlew assembleRelease
+    - name: Check lint
+      run: ./gradlew lintRelease
