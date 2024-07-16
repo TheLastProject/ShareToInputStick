@@ -14,7 +14,6 @@ import android.text.InputType
 import android.view.*
 import android.widget.AdapterView
 import android.widget.EditText
-import android.widget.ListView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -28,30 +27,29 @@ import com.inputstick.api.Util
 import com.inputstick.api.basic.InputStickHID
 import com.inputstick.api.basic.InputStickKeyboard
 import com.inputstick.api.broadcast.InputStickBroadcast
-import kotlinx.android.synthetic.main.activity_main.*
+import me.hackerchick.sharetoinputstick.databinding.ActivityMainBinding
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity(), InputStickStateListener {
+    private lateinit var binding: ActivityMainBinding
+
     private var mBluetoothAdapter: BluetoothAdapter? = null
     private var mBluetoothAdapterAutoRescan: Boolean = true
-
-    private var mKnownDevicesListView: ListView? = null
-    private var mBluetoothDevicesListView: ListView? = null
 
     private var mBusyDialog: AlertDialog? = null
 
     private var PERMISSION_REQUEST_BLUETOOTH = 1
-
-    private var mUseInputUtilityButton: View? = null
-    private var mFab: View? = null
 
     private var dbHelper: DBHelper? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        val view = binding.root
+
+        setContentView(view)
 
         setSupportActionBar(findViewById(R.id.appbar))
 
@@ -66,46 +64,42 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             }
         }
 
-        mUseInputUtilityButton = findViewById(R.id.useInputStickUtilityButton)
-        mUseInputUtilityButton?.setOnClickListener {
+        binding.useInputStickUtilityButton.setOnClickListener {
             sendMessageUsingInputStickUtility()
         }
 
-        mFab = findViewById(R.id.fab)
-        mFab?.setOnClickListener {
+        binding.fab.setOnClickListener {
             showNewMessageDialog()
         }
 
         InputStickHID.addStateListener(this)
 
         // Register lists
-        mKnownDevicesListView = findViewById(R.id.knownDevicesListView)
-        registerForContextMenu(mKnownDevicesListView)
-        mKnownDevicesListView?.setOnItemClickListener { _, _, position, _ ->
+        registerForContextMenu(binding.knownDevicesListView)
+        binding.knownDevicesListView.setOnItemClickListener { _, _, position, _ ->
             connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(model.getKnownDevicesList(applicationContext).value!![position].mac)!!)
         }
 
-        mBluetoothDevicesListView = findViewById(R.id.bluetoothDevicesListView)
-        mBluetoothDevicesListView?.setOnItemClickListener { _, _, position, _ ->
+        binding.bluetoothDevicesListView.setOnItemClickListener { _, _, position, _ ->
             connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(model.getBluetoothDevicesList().value!![position].mac)!!)
         }
 
         val knownDevicesObserver = Observer<ArrayList<InputStick>> {
-            knownDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it, model)
+            binding.knownDevicesListView.adapter = InputStickAdapter(this.applicationContext, it, model)
         }
 
         // Update lists on change
         model.getKnownDevicesList(applicationContext).observe(this, knownDevicesObserver)
         model.getBluetoothDevicesList().observe(this) {
-            bluetoothDevicesListView?.adapter = InputStickAdapter(this.applicationContext, it, null)
+            binding.bluetoothDevicesListView.adapter = InputStickAdapter(this.applicationContext, it, null)
             val knownDevices = model.getKnownDevicesList(applicationContext).value
             if (knownDevices != null) {
-                knownDevicesListView?.adapter = InputStickAdapter(
+                binding.knownDevicesListView.adapter = InputStickAdapter(
                     this.applicationContext,
                     knownDevices,
                     model
                 )
-                knownDevicesListView?.adapter
+                binding.knownDevicesListView.adapter
             }
         }
 
@@ -234,12 +228,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         if (model.getTextToSend().value!!.isEmpty()) {
             title = "Edit InputSticks"
-            mFab?.visibility = View.VISIBLE
-            mUseInputUtilityButton?.visibility = View.GONE
+            binding.fab.visibility = View.VISIBLE
+            binding.useInputStickUtilityButton.visibility = View.GONE
         } else {
             title = "Share To InputStick"
-            mFab?.visibility = View.INVISIBLE
-            mUseInputUtilityButton?.visibility = View.VISIBLE
+            binding.fab.visibility = View.INVISIBLE
+            binding.useInputStickUtilityButton.visibility = View.VISIBLE
         }
 
         // Reshow dialog if in progress
