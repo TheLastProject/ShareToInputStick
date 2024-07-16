@@ -3,7 +3,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 ### build.sh
-### Builds Share To InputStick the same way F-Droid does for reproducible builds
+### Reproducibly builds Share To InputStick
 
 if [ -z "${ANDROID_SDK_ROOT:-}" ]; then
   echo "ANDROID_SDK_ROOT is not set, setting to $HOME/Android/Sdk";
