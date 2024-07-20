@@ -1,3 +1,3 @@
 This app adds an entry to Android's Share menu to allow you to instantly "share" text to your InputStick.
 
-This app is Open Source. The source code is available on https://github.com/TheLastProject/ShareToInputStick.
+This app is Open Source. See https://github.com/TheLastProject/ShareToInputStick for more information.
