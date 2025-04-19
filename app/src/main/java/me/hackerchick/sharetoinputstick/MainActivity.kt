@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.*
 import android.content.pm.PackageManager
+import android.graphics.Insets
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
@@ -19,6 +20,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Observer
 import com.inputstick.api.ConnectionManager
 import com.inputstick.api.InputStickError
@@ -50,6 +53,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         val view = binding.root
 
         setContentView(view)
+
+        applyWindowInsets(view)
 
         setSupportActionBar(findViewById(R.id.appbar))
 
@@ -517,6 +522,22 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             mBusyDialog!!.show()
         } else {
             mBusyDialog!!.hide()
+        }
+    }
+
+    fun applyWindowInsets(root: View) {
+        /* This function basically fakes the activity being edge-to-edge. Useful for those activities that are really hard to get to behave well */
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            val layoutParams = view.layoutParams as ViewGroup.MarginLayoutParams
+            layoutParams.leftMargin = insets.left
+            layoutParams.bottomMargin = insets.bottom
+            layoutParams.rightMargin = insets.right
+            layoutParams.topMargin = insets.top
+            view.layoutParams = layoutParams
+
+            WindowInsetsCompat.CONSUMED
         }
     }
 }
