@@ -4,6 +4,10 @@ apply plugin: 'kotlin-android'
 
 apply plugin: 'kotlin-kapt'
 
+kotlin {
+    jvmToolchain(21)
+}
+
 android {
     compileSdkVersion 35
     defaultConfig {
@@ -23,9 +27,14 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    kotlin {
-        jvmToolchain(17)
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_21.toString()
     }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
     lint {
         lintConfig file('lint.xml')
     }
