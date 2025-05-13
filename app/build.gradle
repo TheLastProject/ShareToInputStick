@@ -14,8 +14,8 @@ android {
         applicationId "me.hackerchick.sharetoinputstick"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 22
-        versionName "3.6.1"
+        versionCode 23
+        versionName "3.6.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures {
