@@ -1,0 +1,1 @@
+Diese App fügt einen Eintrag zum Freigabemenü von Android hinzu, damit Sie Text sofort für Ihren InputStick &quot;freigeben&quot; können.
