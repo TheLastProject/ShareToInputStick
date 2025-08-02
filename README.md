@@ -21,6 +21,12 @@ Build with signing:
 KEYSTORE=/path/to/keystore KEYSTORE_ALIAS=key0 ./build.sh
 ```
 
+# Translating
+
+[![Translation status](https://hosted.weblate.org/widgets/share-to-inputstick/-/open-graph.png)](https://hosted.weblate.org/engage/share-to-inputstick/)
+
+Help translate the app to your language from [our Hosted Weblate page](https://hosted.weblate.org/projects/share-to-inputstick/).
+
 ## License
 
 MIT
