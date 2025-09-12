@@ -12,7 +12,7 @@ android {
     compileSdkVersion 36
     defaultConfig {
         applicationId "me.hackerchick.sharetoinputstick"
-        minSdkVersion 21
+        minSdkVersion 23
         targetSdkVersion 36
         versionCode 25
         versionName "3.7.1"
