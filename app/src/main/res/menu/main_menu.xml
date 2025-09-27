@@ -3,6 +3,19 @@
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+        android:id="@+id/option_keyboard_layout"
+        android:title="@string/keyboard_layout"
+        app:showAsAction="withText">
+        <menu>
+            <group
+                android:id="@+id/option_keyboard_layout_group"
+                android:checkableBehavior="single">
+                <!-- Keyboard layouts are added here dynamically -->
+            </group>
+        </menu>
+    </item>
+
+    <item
         android:id="@+id/option_typing_speed"
         android:title="@string/typing_speed"
         app:showAsAction="withText">

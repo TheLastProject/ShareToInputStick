@@ -6,8 +6,8 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.room.Room
 import com.inputstick.api.basic.InputStickKeyboard
+import com.inputstick.api.layout.UnitedStatesLayout
 
 class InputStickViewModel(application: Application) : AndroidViewModel(application) {
     private val _knownDevicesList = MutableLiveData<ArrayList<InputStick>>()
@@ -92,6 +92,21 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setBusyDialogMessage(message: String?) {
         _busyDialogMessage = message
+    }
+
+    private val _keyboardLayout = MutableLiveData<String>()
+
+    fun getKeyboardLayout(): LiveData<String> {
+        if (_keyboardLayout.value == null) {
+            _keyboardLayout.value = UnitedStatesLayout.getInstance().localeName
+        }
+
+        return _keyboardLayout
+    }
+
+    fun setKeyboardLayout(keyboardLayout: String) {
+        // Sadly no way to validity check, as KeyboardLayout.getLayout returns UnitedStatesLayout on no match
+        _keyboardLayout.value = keyboardLayout
     }
 
     private val _textToSend = MutableLiveData<String>()
