@@ -8,7 +8,6 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.*
 import android.content.pm.PackageManager
-import android.graphics.Insets
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
@@ -30,6 +29,7 @@ import com.inputstick.api.Util
 import com.inputstick.api.basic.InputStickHID
 import com.inputstick.api.basic.InputStickKeyboard
 import com.inputstick.api.broadcast.InputStickBroadcast
+import com.inputstick.api.layout.KeyboardLayout
 import me.hackerchick.sharetoinputstick.databinding.ActivityMainBinding
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -152,6 +152,40 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
         val inflater: MenuInflater = menuInflater
         inflater.inflate(R.menu.main_menu, menu)
+
+        // Add all keyboard layouts to menu
+        // We can safely use getLayoutCodes together with getLayoutNames as the InputStick API guarantees those are in the same order
+        val keyboardLayoutSubMenu = menu.findItem(R.id.option_keyboard_layout).subMenu!!
+        val keyboardLayoutCodes = KeyboardLayout.getLayoutCodes()
+
+        // For each layout supported by InputStickAPI
+        KeyboardLayout.getLayoutNames(true).forEachIndexed { index, layoutName ->
+            // Add an entry to the menu
+            val keyboardMenuItem = keyboardLayoutSubMenu.add(
+                R.id.option_keyboard_layout_group,
+                Menu.NONE,
+                index,
+                layoutName
+            )
+
+            // Mark it as checked if it is the current active layout
+            keyboardMenuItem.isChecked = ((keyboardLayoutCodes[index] as String) == model.getKeyboardLayout().value!!)
+
+            // Set this layout when tapped
+            keyboardMenuItem.setOnMenuItemClickListener { menuItem ->
+                model.setKeyboardLayout(KeyboardLayout.getLayoutCodes()[menuItem.itemId] as String)
+
+                true
+            }
+        }
+
+        // Set up exclusive checkbox support on the group
+        // Without this step, no checkboxes will appear in the menu
+        keyboardLayoutSubMenu.setGroupCheckable(
+            R.id.option_keyboard_layout_group,
+            true,
+            true
+        )
 
         when (model.getInputSpeed().value) {
             InputStickKeyboard.TYPING_SPEED_NORMAL -> {
@@ -283,7 +317,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private fun sendMessageUsingInputStickUtility() {
         val model: InputStickViewModel by viewModels()
 
-        InputStickBroadcast.type(applicationContext, model.getTextToSend().value, "en-US")
+        InputStickBroadcast.type(applicationContext, model.getTextToSend().value, model.getKeyboardLayout().value!!)
         Toast.makeText(applicationContext, "Sent text to InputStickUtility…", Toast.LENGTH_SHORT).show()
         finish()
     }
@@ -501,7 +535,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         inputStick.last_used = System.currentTimeMillis()
         model.editDevice(applicationContext, inputStick)
 
-        InputStickKeyboard.type(textToSend, "en-US", model.getInputSpeed().value!!)
+        InputStickKeyboard.type(textToSend, model.getKeyboardLayout().value!!, model.getInputSpeed().value!!)
     }
 
     private fun updateBusyDialog(context: Context, message: String?) {
