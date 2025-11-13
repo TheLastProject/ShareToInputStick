@@ -40,6 +40,9 @@ android {
     lint {
         lintConfig file('lint.xml')
     }
+    lintOptions {
+        baseline file('lint-baseline.xml')
+    }
     namespace 'me.hackerchick.sharetoinputstick'
 }
 
