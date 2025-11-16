@@ -14,7 +14,12 @@ import android.os.Bundle
 import android.text.InputType
 import android.view.*
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Spinner
+import android.widget.SpinnerAdapter
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -23,6 +28,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Observer
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.inputstick.api.ConnectionManager
 import com.inputstick.api.InputStickError
 import com.inputstick.api.InputStickStateListener
@@ -145,64 +151,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         mBluetoothAdapterAutoRescan = false
         mBluetoothAdapter?.startDiscovery()
         InputStickHID.addStateListener(this)
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        val model: InputStickViewModel by viewModels()
-
-        val inflater: MenuInflater = menuInflater
-        inflater.inflate(R.menu.main_menu, menu)
-
-        when (model.getInputSpeed().value) {
-            InputStickKeyboard.TYPING_SPEED_NORMAL -> {
-                val menuItem = menu.findItem(R.id.option_typing_speed_100)
-                menuItem.isChecked = true
-            }
-            InputStickKeyboard.TYPING_SPEED_050X -> {
-                val menuItem = menu.findItem(R.id.option_typing_speed_50)
-                menuItem.isChecked = true
-            }
-            InputStickKeyboard.TYPING_SPEED_033X -> {
-                val menuItem = menu.findItem(R.id.option_typing_speed_33)
-                menuItem.isChecked = true
-            }
-            InputStickKeyboard.TYPING_SPEED_025X -> {
-                val menuItem = menu.findItem(R.id.option_typing_speed_25)
-                menuItem.isChecked = true
-            }
-        }
-
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
-        R.id.option_typing_speed_100 -> {
-            val model: InputStickViewModel by viewModels()
-            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_NORMAL)
-            item.isChecked = true
-            true
-        }
-        R.id.option_typing_speed_50 -> {
-            val model: InputStickViewModel by viewModels()
-            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_050X)
-            item.isChecked = true
-            true
-        }
-        R.id.option_typing_speed_33 -> {
-            val model: InputStickViewModel by viewModels()
-            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_033X)
-            item.isChecked = true
-            true
-        }
-        R.id.option_typing_speed_25 -> {
-            val model: InputStickViewModel by viewModels()
-            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_025X)
-            item.isChecked = true
-            true
-        }
-        else -> {
-            super.onOptionsItemSelected(item)
-        }
     }
 
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo) {
@@ -448,11 +396,59 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 val connectingDevice = model.getConnectingDevice().value!!
                 val textToSend = model.getTextToSend().value!!
                 if (textToSend.isNotEmpty()) {
-                    // Send mode
-                    model.setSending(true)
-                    updateBusyDialog(this, "Sending data...")
-                    sendToBluetoothDevice(connectingDevice, textToSend)
-                    closeAfterSendingCompletes()
+                    // Prepare typing speed state holding spinner
+                    val typingSpeedSpinner = Spinner(this).apply {
+                        val typingSpeedList = ArrayList<String>();
+                        typingSpeedList.add(0, "100%")
+                        typingSpeedList.add(1, "50%")
+                        typingSpeedList.add(2, "33%")
+                        typingSpeedList.add(3, "25%")
+
+                        adapter = ArrayAdapter(this@MainActivity, android.R.layout.select_dialog_item, typingSpeedList)
+                    }
+
+                    // Show dialog asking for typing speed
+                    MaterialAlertDialogBuilder(this).apply {
+                        setTitle(R.string.send_text)
+                        // Add multiple vertical entries
+                        setView(LinearLayout(context).apply {
+                            orientation = LinearLayout.VERTICAL
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
+                            )
+                            // Add entry for for typing speed
+                            addView(LinearLayout(context).apply {
+                                orientation = LinearLayout.HORIZONTAL
+                                layoutParams = LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
+                                addView(TextView(context).apply {
+                                    text = getString(R.string.typing_speed)
+                                })
+                                addView(typingSpeedSpinner)
+                            })
+                        })
+                        setPositiveButton(getString(R.string.send)) { _, _ ->
+                            // Apply typing speed
+                            when (typingSpeedSpinner.selectedItem) {
+                                "100%" -> model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_NORMAL)
+                                "50%" -> model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_050X)
+                                "33%" -> model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_033X)
+                                "25%" -> model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_025X)
+                            }
+
+                            // Send data
+                            model.setSending(true)
+                            updateBusyDialog(this@MainActivity, "Sending data...")
+                            sendToBluetoothDevice(connectingDevice, textToSend)
+                            closeAfterSendingCompletes()
+                        }
+                        show()
+                    }
+
+                    updateBusyDialog(this, null)
                 } else {
                     // Configure mode
                     // TODO: Allow changing the device's password here
