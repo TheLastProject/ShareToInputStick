@@ -8,7 +8,6 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.*
 import android.content.pm.PackageManager
-import android.graphics.Insets
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
@@ -18,7 +17,6 @@ import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
-import android.widget.SpinnerAdapter
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,6 +35,7 @@ import com.inputstick.api.basic.InputStickHID
 import com.inputstick.api.basic.InputStickKeyboard
 import com.inputstick.api.broadcast.InputStickBroadcast
 import com.inputstick.api.layout.KeyboardLayout
+import com.inputstick.api.layout.UnitedStatesLayout
 import me.hackerchick.sharetoinputstick.databinding.ActivityMainBinding
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -89,11 +88,11 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         // Register lists
         registerForContextMenu(binding.knownDevicesListView)
         binding.knownDevicesListView.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(model.getKnownDevicesList(applicationContext).value!![position].mac)!!)
+            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(this, model.getKnownDevicesList(applicationContext).value!![position].mac)!!)
         }
 
         binding.bluetoothDevicesListView.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(model.getBluetoothDevicesList().value!![position].mac)!!)
+            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(this, model.getBluetoothDevicesList().value!![position].mac))
         }
 
         val knownDevicesObserver = Observer<ArrayList<InputStick>> {
@@ -168,8 +167,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             R.id.forget -> {
                 val device = model.getKnownDevicesList(applicationContext).value!![info.position]
                 device.password = null
-                device.last_used = 0
-                model.editDevice(applicationContext, device)
+                device.lastUsed = 0
+                model.markInputStickAsUnknown(applicationContext, device)
 
                 true
             }
@@ -199,16 +198,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
     }
 
-    private fun getDevicePassword(inputStick: InputStick) : String? {
-        return inputStick.password
-    }
-
     private fun setDevicePassword(inputStick: InputStick, devicePassword: String?) {
         val model: InputStickViewModel by viewModels()
 
         inputStick.password = devicePassword
-        inputStick.last_used = System.currentTimeMillis()
-        model.editDevice(applicationContext, inputStick)
+        inputStick.lastUsed = System.currentTimeMillis()
+        model.markInputStickAsKnown(applicationContext, inputStick)
     }
 
     private fun connectToInputStickUsingBluetooth(device: InputStick) {
@@ -223,8 +218,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         model.setConnectingDevice(device)
 
         var connectionPassword: ByteArray? = null
-        if (getDevicePassword(device) != null) {
-            connectionPassword = Util.getPasswordBytes(getDevicePassword(device))
+        if (device.password != null) {
+            connectionPassword = Util.getPasswordBytes(device.password)
         }
         InputStickHID.connect(application, device.mac, connectionPassword, true)
     }
@@ -334,7 +329,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
     private fun showIncorrectPasswordDialog(inputStick: InputStick) {
         val editText = EditText(this)
-        editText.setText(getDevicePassword(inputStick))
+        editText.setText(inputStick.password)
         editText.inputType = InputType.TYPE_TEXT_VARIATION_PASSWORD
 
         val dialog = AlertDialog.Builder(this)
@@ -399,12 +394,28 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 if (textToSend.isNotEmpty()) {
                     // Prepare keyboard layout state holding spinner
                     val keyboardLayoutSpinner = Spinner(this).apply {
-                        val keyboardLayoutList = ArrayList<String>();
+                        val keyboardLayoutList = ArrayList<String>()
+                        val keyboardLayoutCodes = KeyboardLayout.getLayoutCodes()
+
+                        // Default to en_US
+                        // TODO: Make default configurable
+                        val deviceLayoutCode = connectingDevice.keyboardLayoutCode ?: UnitedStatesLayout.getInstance().localeName
+
+                        var keyboardLayoutSelectionID = 0
+
                         KeyboardLayout.getLayoutNames(true).forEachIndexed { index, layoutName ->
-                            keyboardLayoutList.add(index, layoutName.toString())
+                            var layoutNameString = layoutName.toString()
+                            keyboardLayoutList.add(index, layoutNameString)
+
+                            if (deviceLayoutCode == keyboardLayoutCodes[index]) {
+                                // Setting the items overrides the selection, so we have to store this temporarily
+                                keyboardLayoutSelectionID = index
+                            }
                         }
 
                         adapter = ArrayAdapter(this@MainActivity, android.R.layout.select_dialog_item, keyboardLayoutList)
+
+                        setSelection(keyboardLayoutSelectionID)
                     }
 
                     // Prepare typing speed state holding spinner
@@ -416,6 +427,13 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                         typingSpeedList.add(3, "25%")
 
                         adapter = ArrayAdapter(this@MainActivity, android.R.layout.select_dialog_item, typingSpeedList)
+
+                        when (connectingDevice.inputSpeed) {
+                            InputStickKeyboard.TYPING_SPEED_NORMAL -> setSelection(0)
+                            InputStickKeyboard.TYPING_SPEED_050X -> setSelection(1)
+                            InputStickKeyboard.TYPING_SPEED_033X -> setSelection(2)
+                            InputStickKeyboard.TYPING_SPEED_025X -> setSelection(3)
+                        }
                     }
 
                     // Show dialog asking for typing speed
@@ -430,7 +448,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                             )
                             // Add entry for layout
                             addView(LinearLayout(context).apply {
-                                orientation = LinearLayout.HORIZONTAL
+                                orientation = LinearLayout.VERTICAL
                                 layoutParams = LinearLayout.LayoutParams(
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                     ViewGroup.LayoutParams.WRAP_CONTENT
@@ -442,7 +460,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                             })
                             // Add entry for for typing speed
                             addView(LinearLayout(context).apply {
-                                orientation = LinearLayout.HORIZONTAL
+                                orientation = LinearLayout.VERTICAL
                                 layoutParams = LinearLayout.LayoutParams(
                                     ViewGroup.LayoutParams.MATCH_PARENT,
                                     ViewGroup.LayoutParams.WRAP_CONTENT
@@ -456,21 +474,21 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                         setPositiveButton(getString(R.string.send)) { _, _ ->
                             // Retrieve keyboard layout
                             // We can safely use getLayoutCodes together with getLayoutNames as the InputStick API guarantees those are in the same order
-                            val layoutCode = KeyboardLayout.getLayoutCodes()[keyboardLayoutSpinner.selectedItemPosition]
+                            val deviceLayoutCode = KeyboardLayout.getLayoutCodes()[keyboardLayoutSpinner.selectedItemPosition].toString()
+                            connectingDevice.keyboardLayoutCode = deviceLayoutCode
 
                             // Apply typing speed
                             when (typingSpeedSpinner.selectedItem) {
-                                "100%" -> model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_NORMAL)
-                                "50%" -> model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_050X)
-                                "33%" -> model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_033X)
-                                "25%" -> model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_025X)
+                                "100%" -> connectingDevice.inputSpeed = InputStickKeyboard.TYPING_SPEED_NORMAL
+                                "50%" -> connectingDevice.inputSpeed = InputStickKeyboard.TYPING_SPEED_050X
+                                "33%" -> connectingDevice.inputSpeed = InputStickKeyboard.TYPING_SPEED_033X
+                                "25%" -> connectingDevice.inputSpeed = InputStickKeyboard.TYPING_SPEED_025X
                             }
 
                             // Send data
                             model.setSending(true)
                             updateBusyDialog(context, "Sending data...")
-                            sendToBluetoothDevice(connectingDevice, textToSend, layoutCode.toString())
-                            Toast.makeText(context, layoutCode.toString(), Toast.LENGTH_LONG).show()
+                            sendToBluetoothDevice(connectingDevice, textToSend, deviceLayoutCode)
                             closeAfterSendingCompletes()
                         }
                         show()
@@ -492,8 +510,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 }
 
                 // Consider device used
-                connectingDevice.last_used = System.currentTimeMillis()
-                model.editDevice(applicationContext, connectingDevice)
+                connectingDevice.lastUsed = System.currentTimeMillis()
+                model.markInputStickAsKnown(applicationContext, connectingDevice)
             }
             ConnectionManager.STATE_FAILURE -> {
                 updateBusyDialog(this, null)
@@ -522,10 +540,10 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
     private fun sendToBluetoothDevice(inputStick: InputStick, textToSend: String, layoutCode: String) {
         val model: InputStickViewModel by viewModels()
 
-        inputStick.last_used = System.currentTimeMillis()
-        model.editDevice(applicationContext, inputStick)
+        inputStick.lastUsed = System.currentTimeMillis()
+        model.markInputStickAsKnown(applicationContext, inputStick)
 
-        InputStickKeyboard.type(textToSend, layoutCode, model.getInputSpeed().value!!)
+        InputStickKeyboard.type(textToSend, layoutCode, inputStick.inputSpeed)
     }
 
     private fun updateBusyDialog(context: Context, message: String?) {
