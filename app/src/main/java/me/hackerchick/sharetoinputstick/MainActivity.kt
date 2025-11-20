@@ -455,6 +455,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                                 )
                                 addView(TextView(context).apply {
                                     text = getString(R.string.keyboard_layout)
+                                    setPadding(40, 40, 0, 0)
                                 })
                                 addView(keyboardLayoutSpinner)
                             })
@@ -467,6 +468,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                                 )
                                 addView(TextView(context).apply {
                                     text = getString(R.string.typing_speed)
+                                    setPadding(40, 0, 0, 0)
                                 })
                                 addView(typingSpeedSpinner)
                             })
