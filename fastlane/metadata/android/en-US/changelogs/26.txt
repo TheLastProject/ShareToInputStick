@@ -1,0 +1,3 @@
+- Add per-inputstick ability to select keyboard layout (default: en_US)
+- Move typing speed to per-inputstick dialog
+- Remove "Use InputStickUtility" button (it was still hardcoded to en_US, can be readded later if demand exists)
