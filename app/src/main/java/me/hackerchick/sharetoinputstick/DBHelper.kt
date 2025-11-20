@@ -27,7 +27,7 @@ class DBHelper(context: Context?):
                 InputSticksDB.NAME + " TEXT," +
                 InputSticksDB.PASSWORD + " TEXT," +
                 InputSticksDB.LAST_USED + " INTEGER DEFAULT '0'," +
-                InputSticksDB.INPUT_SPEED + " INTEGER DEFAULT '100'," +
+                InputSticksDB.INPUT_SPEED + " INTEGER DEFAULT '1'," +
                 InputSticksDB.KEYBOARD_LAYOUT_CODE + " TEXT" +
             ")"
         )
@@ -37,7 +37,7 @@ class DBHelper(context: Context?):
         if (oldVersion < 2) {
             db.execSQL(
                 "ALTER TABLE " + InputSticksDB.TABLE +
-                    " ADD COLUMN " + InputSticksDB.INPUT_SPEED + " INTEGER DEFAULT '100'"
+                    " ADD COLUMN " + InputSticksDB.INPUT_SPEED + " INTEGER DEFAULT '1'"
             )
             db.execSQL(
                 "ALTER TABLE " + InputSticksDB.TABLE +
