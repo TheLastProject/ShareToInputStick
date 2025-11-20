@@ -20,11 +20,17 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
         return _knownDevicesList
     }
 
-    fun editDevice(context: Context, inputStick: InputStick) {
-        val db = DBHelper(context)
-        db.upsertInputStick(inputStick.mac, inputStick.name, inputStick.password, inputStick.last_used)
+    fun markInputStickAsKnown(context: Context, inputStick: InputStick) {
+        // Remove device from list
+        markInputStickAsUnknown(context, inputStick)
+        val data = getKnownDevicesList(context).value!!
+        data.add(inputStick)
+        _knownDevicesList.value = data
+    }
 
-        var data = getKnownDevicesList(context).value!!
+    fun markInputStickAsUnknown(context: Context, inputStick: InputStick) {
+        // Reorder list if it makes sense
+        val data = getKnownDevicesList(context).value!!
 
         for (device in data) {
             // See if it is an already known device, if so, remove
@@ -32,11 +38,6 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
                 data.remove(device)
                 break
             }
-        }
-
-        // And (re)add if marked as used before
-        if (inputStick.last_used > 0) {
-            data.add(inputStick)
         }
 
         _knownDevicesList.value = data
@@ -108,20 +109,6 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
         _textToSend.value = text
     }
 
-    private val _inputSpeed = MutableLiveData<Int>()
-
-    fun getInputSpeed(): LiveData<Int> {
-        if (_inputSpeed.value == null) {
-            _inputSpeed.value = InputStickKeyboard.TYPING_SPEED_NORMAL
-        }
-
-        return _inputSpeed
-    }
-
-    fun setInputSpeed(inputSpeed: Int) {
-        _inputSpeed.value = inputSpeed
-    }
-
     private val _sending = MutableLiveData<Boolean>()
 
     fun isSending(): LiveData<Boolean> {
@@ -138,16 +125,13 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun loadKnownDevicesList(context: Context): ArrayList<InputStick> {
         val db = DBHelper(context)
-        return db.getAllByLastUsed() as ArrayList<InputStick>
+        return db.getAllByLastUsed(context) as ArrayList<InputStick>
     }
 
     private fun retrieveInputStick(context: Context, mac: String): InputStick {
         val db = DBHelper(context)
 
-        var inputStick = db.getInputStick(mac)
-        if (inputStick == null) {
-            inputStick = InputStick(mac, null, null, 0)
-        }
+        var inputStick = db.getInputStick(context, mac)
 
         return inputStick
     }
@@ -158,7 +142,7 @@ class InputStickViewModel(application: Application) : AndroidViewModel(applicati
             inputStick.name = bluetoothDevice.name
 
             val db = DBHelper(context)
-            db.upsertInputStick(inputStick.mac, inputStick.name, inputStick.password, inputStick.last_used)
+            db.setInputStickName(inputStick.mac, inputStick.name)
         }
 
         return inputStick

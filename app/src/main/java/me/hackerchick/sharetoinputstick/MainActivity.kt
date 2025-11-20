@@ -8,13 +8,16 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.*
 import android.content.pm.PackageManager
-import android.graphics.Insets
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.view.*
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -23,6 +26,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Observer
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.inputstick.api.ConnectionManager
 import com.inputstick.api.InputStickError
 import com.inputstick.api.InputStickStateListener
@@ -30,6 +34,8 @@ import com.inputstick.api.Util
 import com.inputstick.api.basic.InputStickHID
 import com.inputstick.api.basic.InputStickKeyboard
 import com.inputstick.api.broadcast.InputStickBroadcast
+import com.inputstick.api.layout.KeyboardLayout
+import com.inputstick.api.layout.UnitedStatesLayout
 import me.hackerchick.sharetoinputstick.databinding.ActivityMainBinding
 import java.util.concurrent.ScheduledThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -69,10 +75,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             }
         }
 
-        binding.useInputStickUtilityButton.setOnClickListener {
-            sendMessageUsingInputStickUtility()
-        }
-
         binding.fab.setOnClickListener {
             showNewMessageDialog()
         }
@@ -82,11 +84,11 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         // Register lists
         registerForContextMenu(binding.knownDevicesListView)
         binding.knownDevicesListView.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(model.getKnownDevicesList(applicationContext).value!![position].mac)!!)
+            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(this, model.getKnownDevicesList(applicationContext).value!![position].mac)!!)
         }
 
         binding.bluetoothDevicesListView.setOnItemClickListener { _, _, position, _ ->
-            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(model.getBluetoothDevicesList().value!![position].mac)!!)
+            connectToInputStickUsingBluetooth(dbHelper!!.getInputStick(this, model.getBluetoothDevicesList().value!![position].mac))
         }
 
         val knownDevicesObserver = Observer<ArrayList<InputStick>> {
@@ -147,64 +149,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         InputStickHID.addStateListener(this)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        val model: InputStickViewModel by viewModels()
-
-        val inflater: MenuInflater = menuInflater
-        inflater.inflate(R.menu.main_menu, menu)
-
-        when (model.getInputSpeed().value) {
-            InputStickKeyboard.TYPING_SPEED_NORMAL -> {
-                val menuItem = menu.findItem(R.id.option_typing_speed_100)
-                menuItem.isChecked = true
-            }
-            InputStickKeyboard.TYPING_SPEED_050X -> {
-                val menuItem = menu.findItem(R.id.option_typing_speed_50)
-                menuItem.isChecked = true
-            }
-            InputStickKeyboard.TYPING_SPEED_033X -> {
-                val menuItem = menu.findItem(R.id.option_typing_speed_33)
-                menuItem.isChecked = true
-            }
-            InputStickKeyboard.TYPING_SPEED_025X -> {
-                val menuItem = menu.findItem(R.id.option_typing_speed_25)
-                menuItem.isChecked = true
-            }
-        }
-
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
-        R.id.option_typing_speed_100 -> {
-            val model: InputStickViewModel by viewModels()
-            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_NORMAL)
-            item.isChecked = true
-            true
-        }
-        R.id.option_typing_speed_50 -> {
-            val model: InputStickViewModel by viewModels()
-            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_050X)
-            item.isChecked = true
-            true
-        }
-        R.id.option_typing_speed_33 -> {
-            val model: InputStickViewModel by viewModels()
-            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_033X)
-            item.isChecked = true
-            true
-        }
-        R.id.option_typing_speed_25 -> {
-            val model: InputStickViewModel by viewModels()
-            model.setInputSpeed(InputStickKeyboard.TYPING_SPEED_025X)
-            item.isChecked = true
-            true
-        }
-        else -> {
-            super.onOptionsItemSelected(item)
-        }
-    }
-
     override fun onCreateContextMenu(menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo)
         val inflater: MenuInflater = menuInflater
@@ -219,8 +163,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             R.id.forget -> {
                 val device = model.getKnownDevicesList(applicationContext).value!![info.position]
                 device.password = null
-                device.last_used = 0
-                model.editDevice(applicationContext, device)
+                device.lastUsed = 0
+                model.markInputStickAsUnknown(applicationContext, device)
 
                 true
             }
@@ -234,11 +178,9 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         if (model.getTextToSend().value!!.isEmpty()) {
             title = "Edit InputSticks"
             binding.fab.visibility = View.VISIBLE
-            binding.useInputStickUtilityButton.visibility = View.GONE
         } else {
             title = "Share To InputStick"
             binding.fab.visibility = View.INVISIBLE
-            binding.useInputStickUtilityButton.visibility = View.VISIBLE
         }
 
         // Reshow dialog if in progress
@@ -250,16 +192,12 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
     }
 
-    private fun getDevicePassword(inputStick: InputStick) : String? {
-        return inputStick.password
-    }
-
     private fun setDevicePassword(inputStick: InputStick, devicePassword: String?) {
         val model: InputStickViewModel by viewModels()
 
         inputStick.password = devicePassword
-        inputStick.last_used = System.currentTimeMillis()
-        model.editDevice(applicationContext, inputStick)
+        inputStick.lastUsed = System.currentTimeMillis()
+        model.markInputStickAsKnown(applicationContext, inputStick)
     }
 
     private fun connectToInputStickUsingBluetooth(device: InputStick) {
@@ -274,8 +212,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         model.setConnectingDevice(device)
 
         var connectionPassword: ByteArray? = null
-        if (getDevicePassword(device) != null) {
-            connectionPassword = Util.getPasswordBytes(getDevicePassword(device))
+        if (device.password != null) {
+            connectionPassword = Util.getPasswordBytes(device.password)
         }
         InputStickHID.connect(application, device.mac, connectionPassword, true)
     }
@@ -385,7 +323,7 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
 
     private fun showIncorrectPasswordDialog(inputStick: InputStick) {
         val editText = EditText(this)
-        editText.setText(getDevicePassword(inputStick))
+        editText.setText(inputStick.password)
         editText.inputType = InputType.TYPE_TEXT_VARIATION_PASSWORD
 
         val dialog = AlertDialog.Builder(this)
@@ -448,11 +386,111 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 val connectingDevice = model.getConnectingDevice().value!!
                 val textToSend = model.getTextToSend().value!!
                 if (textToSend.isNotEmpty()) {
-                    // Send mode
-                    model.setSending(true)
-                    updateBusyDialog(this, "Sending data...")
-                    sendToBluetoothDevice(connectingDevice, textToSend)
-                    closeAfterSendingCompletes()
+                    // Prepare keyboard layout state holding spinner
+                    val keyboardLayoutSpinner = Spinner(this).apply {
+                        val keyboardLayoutList = ArrayList<String>()
+                        val keyboardLayoutCodes = KeyboardLayout.getLayoutCodes()
+
+                        // Default to en_US
+                        // TODO: Make default configurable
+                        val deviceLayoutCode = connectingDevice.keyboardLayoutCode ?: UnitedStatesLayout.getInstance().localeName
+
+                        var keyboardLayoutSelectionID = 0
+
+                        KeyboardLayout.getLayoutNames(true).forEachIndexed { index, layoutName ->
+                            var layoutNameString = layoutName.toString()
+                            keyboardLayoutList.add(index, layoutNameString)
+
+                            if (deviceLayoutCode == keyboardLayoutCodes[index]) {
+                                // Setting the items overrides the selection, so we have to store this temporarily
+                                keyboardLayoutSelectionID = index
+                            }
+                        }
+
+                        adapter = ArrayAdapter(this@MainActivity, android.R.layout.select_dialog_item, keyboardLayoutList)
+
+                        setSelection(keyboardLayoutSelectionID)
+                    }
+
+                    // Prepare typing speed state holding spinner
+                    val typingSpeedSpinner = Spinner(this).apply {
+                        val typingSpeedList = ArrayList<String>();
+                        typingSpeedList.add(0, "100%")
+                        typingSpeedList.add(1, "50%")
+                        typingSpeedList.add(2, "33%")
+                        typingSpeedList.add(3, "25%")
+
+                        adapter = ArrayAdapter(this@MainActivity, android.R.layout.select_dialog_item, typingSpeedList)
+
+                        when (connectingDevice.inputSpeed) {
+                            InputStickKeyboard.TYPING_SPEED_NORMAL -> setSelection(0)
+                            InputStickKeyboard.TYPING_SPEED_050X -> setSelection(1)
+                            InputStickKeyboard.TYPING_SPEED_033X -> setSelection(2)
+                            InputStickKeyboard.TYPING_SPEED_025X -> setSelection(3)
+                        }
+                    }
+
+                    // Show dialog asking for typing speed
+                    MaterialAlertDialogBuilder(this).apply {
+                        setTitle(R.string.send_text)
+                        // Add multiple vertical entries
+                        setView(LinearLayout(context).apply {
+                            orientation = LinearLayout.VERTICAL
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT
+                            )
+                            // Add entry for layout
+                            addView(LinearLayout(context).apply {
+                                orientation = LinearLayout.VERTICAL
+                                layoutParams = LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
+                                addView(TextView(context).apply {
+                                    text = getString(R.string.keyboard_layout)
+                                    setPadding(40, 40, 0, 0)
+                                })
+                                addView(keyboardLayoutSpinner)
+                            })
+                            // Add entry for for typing speed
+                            addView(LinearLayout(context).apply {
+                                orientation = LinearLayout.VERTICAL
+                                layoutParams = LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                                )
+                                addView(TextView(context).apply {
+                                    text = getString(R.string.typing_speed)
+                                    setPadding(40, 0, 0, 0)
+                                })
+                                addView(typingSpeedSpinner)
+                            })
+                        })
+                        setPositiveButton(getString(R.string.send)) { _, _ ->
+                            // Retrieve keyboard layout
+                            // We can safely use getLayoutCodes together with getLayoutNames as the InputStick API guarantees those are in the same order
+                            val deviceLayoutCode = KeyboardLayout.getLayoutCodes()[keyboardLayoutSpinner.selectedItemPosition].toString()
+                            connectingDevice.keyboardLayoutCode = deviceLayoutCode
+
+                            // Apply typing speed
+                            when (typingSpeedSpinner.selectedItem) {
+                                "100%" -> connectingDevice.inputSpeed = InputStickKeyboard.TYPING_SPEED_NORMAL
+                                "50%" -> connectingDevice.inputSpeed = InputStickKeyboard.TYPING_SPEED_050X
+                                "33%" -> connectingDevice.inputSpeed = InputStickKeyboard.TYPING_SPEED_033X
+                                "25%" -> connectingDevice.inputSpeed = InputStickKeyboard.TYPING_SPEED_025X
+                            }
+
+                            // Send data
+                            model.setSending(true)
+                            updateBusyDialog(context, "Sending data...")
+                            sendToBluetoothDevice(connectingDevice, textToSend, deviceLayoutCode)
+                            closeAfterSendingCompletes()
+                        }
+                        show()
+                    }
+
+                    updateBusyDialog(this, null)
                 } else {
                     // Configure mode
                     // TODO: Allow changing the device's password here
@@ -468,8 +506,8 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
                 }
 
                 // Consider device used
-                connectingDevice.last_used = System.currentTimeMillis()
-                model.editDevice(applicationContext, connectingDevice)
+                connectingDevice.lastUsed = System.currentTimeMillis()
+                model.markInputStickAsKnown(applicationContext, connectingDevice)
             }
             ConnectionManager.STATE_FAILURE -> {
                 updateBusyDialog(this, null)
@@ -495,13 +533,13 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         }
     }
 
-    private fun sendToBluetoothDevice(inputStick: InputStick, textToSend: String) {
+    private fun sendToBluetoothDevice(inputStick: InputStick, textToSend: String, layoutCode: String) {
         val model: InputStickViewModel by viewModels()
 
-        inputStick.last_used = System.currentTimeMillis()
-        model.editDevice(applicationContext, inputStick)
+        inputStick.lastUsed = System.currentTimeMillis()
+        model.markInputStickAsKnown(applicationContext, inputStick)
 
-        InputStickKeyboard.type(textToSend, "en-US", model.getInputSpeed().value!!)
+        InputStickKeyboard.type(textToSend, layoutCode, inputStick.inputSpeed)
     }
 
     private fun updateBusyDialog(context: Context, message: String?) {
