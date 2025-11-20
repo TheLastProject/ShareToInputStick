@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Share To InputStick</string>
-    <string name="use_inputstickutility_must_be_installed">Use InputStickUtility (must be installed)</string>
     <string name="known_devices">Known Devices</string>
     <string name="found_devices">Found Devices</string>
     <string name="send_text">Send text</string>

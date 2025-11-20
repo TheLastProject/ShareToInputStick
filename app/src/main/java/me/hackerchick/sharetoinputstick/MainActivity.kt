@@ -75,10 +75,6 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
             }
         }
 
-        binding.useInputStickUtilityButton.setOnClickListener {
-            sendMessageUsingInputStickUtility()
-        }
-
         binding.fab.setOnClickListener {
             showNewMessageDialog()
         }
@@ -182,11 +178,9 @@ class MainActivity : AppCompatActivity(), InputStickStateListener {
         if (model.getTextToSend().value!!.isEmpty()) {
             title = "Edit InputSticks"
             binding.fab.visibility = View.VISIBLE
-            binding.useInputStickUtilityButton.visibility = View.GONE
         } else {
             title = "Share To InputStick"
             binding.fab.visibility = View.INVISIBLE
-            binding.useInputStickUtilityButton.visibility = View.VISIBLE
         }
 
         // Reshow dialog if in progress

@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Delen met InputStick</string>
-    <string name="use_inputstickutility_must_be_installed">InputStickUtility gebruiken (moet geïnstalleerd zijn)</string>
     <string name="known_devices">Bekende apparaten</string>
     <string name="found_devices">Aangetroffen apparaten</string>
     <string name="send_text">Tekst versturen</string>
