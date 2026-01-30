@@ -16,7 +16,7 @@ buildscript {
 }
 
 plugins {
-    id 'com.google.devtools.ksp' version '2.2.21-2.0.4' apply false
+    id 'com.google.devtools.ksp' version '2.3.5' apply false
 }
 
 allprojects {
